@@ -28,7 +28,4 @@ const Vacancy = db.define("Vacancy", {
   }
 });
 
-Vacancy.belongsTo(User, { foreignKey: "userId", onDelete: "CASCADE" });
-User.hasMany(Vacancy, { foreignKey: "userId", onDelete: "CASCADE" });
-
 module.exports = Vacancy;

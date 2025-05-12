@@ -13,7 +13,7 @@ export const useResumeDetails = (id) => {
     const fetchResume = async () => {
       try {
         const token = await AsyncStorage.getItem("token");
-        const response = await axios.get(`http://localhost:3000/resumes/${id}`, {
+        const response = await axios.get(`http://192.168.225.12:3000/resumes/${id}`, {
           headers: { Authorization: `Bearer ${token}` },
         });
         setResume(response.data);

@@ -2,7 +2,7 @@ import axios from "axios";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import { Vacancy } from "../types/vacancy";
 
-const API_URL = "http://localhost:3000/vacancies";
+const API_URL = "http://192.168.225.12:3000/vacancies";
 
 // Получение заголовков с авторизацией
 const getAuthHeaders = async () => {

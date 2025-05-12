@@ -1,5 +1,4 @@
-const Resume = require("../models/student/resume");
-const User = require("../models/users");
+const { User, Resume } = require("../models");
 
 exports.upsertResume = async (req, res) => {
     try {

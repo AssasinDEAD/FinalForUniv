@@ -1,8 +1,7 @@
-const Notification = require("../models/cc/notification");
+const { Notification } = require("../models");
 const fs = require("fs");
 const path = require("path");
 
-// Получить все оповещения
 exports.getAllNotifications = async (req, res) => {
   try {
     const notifications = await Notification.findAll({ order: [["created_at", "DESC"]] });
@@ -12,7 +11,6 @@ exports.getAllNotifications = async (req, res) => {
   }
 };
 
-// Создать оповещение с изображением
 exports.createNotification = async (req, res) => {
   const { title, content } = req.body;
 
@@ -49,7 +47,6 @@ exports.updateNotification = async (req, res) => {
     notification.content = content;
 
     if (req.file) {
-      // Удалить старое изображение, если оно есть
       if (notification.imageUrl) {
         const oldImagePath = path.join(__dirname, "..", notification.imageUrl);
         fs.unlink(oldImagePath, (err) => {
@@ -59,7 +56,6 @@ exports.updateNotification = async (req, res) => {
         });
       }
 
-      // Установить новое изображение
       notification.imageUrl = `/uploads/${req.file.filename}`;
     }
 
@@ -74,7 +70,6 @@ exports.updateNotification = async (req, res) => {
 
 
 
-// Удалить оповещение
 exports.deleteNotification = async (req, res) => {
   const { id } = req.params;
 
@@ -86,13 +81,11 @@ exports.deleteNotification = async (req, res) => {
     const notification = await Notification.findByPk(id);
     if (!notification) return res.status(404).json({ error: "Оповещение не найдено" });
 
-    // Удаление изображения, если есть
     if (notification.imageUrl) {
       const imagePath = path.join(__dirname, "..", notification.imageUrl);
       fs.unlink(imagePath, (err) => {
         if (err) {
           console.error("Ошибка при удалении изображения:", err.message);
-          // Не блокируем удаление оповещения из-за ошибки удаления файла
         }
       });
     }
@@ -106,7 +99,6 @@ exports.deleteNotification = async (req, res) => {
 };
 
 
-// Получить одно оповещение по ID
 exports.getNotificationById = async (req, res) => {
   const { id } = req.params;
 

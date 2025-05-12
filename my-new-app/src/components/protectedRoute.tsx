@@ -23,7 +23,7 @@ const ProtectedRoute: React.FC<ProtectedRouteProps> = ({ requiredRole }) => {
       }
 
       try {
-        const { data: user } = await axios.get("http://localhost:3000/auth/me", {
+        const { data: user } = await axios.get("http://192.168.225.12:3000/auth/me", {
           headers: { Authorization: `Bearer ${token}` },
         });
 

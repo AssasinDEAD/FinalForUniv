@@ -3,7 +3,7 @@ import { View, Text, StyleSheet, Image, FlatList, TouchableOpacity, ActivityIndi
 import { useCurrentUser } from "../../../hooks/useCurrentUser";
 import { useNotifications } from "../../../hooks/notification/useNotifications";
 
-const BASE_URL = "http://localhost:3000";
+const BASE_URL = "http://192.168.225.12:3000";
 
 const NotificationListPage = ({ navigation }) => {
   const { user } = useCurrentUser();

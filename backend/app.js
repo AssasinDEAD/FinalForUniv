@@ -2,52 +2,30 @@ const express = require('express');
 const morgan = require('morgan');
 const cors = require('cors');
 const http = require('http');
+const cookieParser = require("cookie-parser");
 
-const authMiddleware = require("./middlewares/authMiddleware");
-const router = express.Router();
+const appRoutes = require("./routes"); 
 
-const userRoutes = require("./routes/userRoutes");
-const authRoutes = require("./routes/authRoutes");
-const resumeRoutes = require("./routes/resumeRoutes");
-const vacancyRoutes = require("./routes/vacancyRoutes");
-const notificationRoutes = require("./routes/notificationRoutes");
-
-
-//db
 const db = require("./config/db");
-
 
 const app = express();
 const port = process.env.PORT || 3000;
 
-
+app.use(cookieParser());
 app.use(express.json());
 app.use(morgan('dev'));
-const corsOptions = {
-  origin: ['http://localhost:5173'],
-  methods: "*",
-  allowedHeaders: "*",
-  credentials: true 
-};
-app.use(cors(corsOptions));
+
+app.use(cors({
+  origin: ['http://192.168.225.12:5173'],
+  methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
+  allowedHeaders: ["Content-Type", "Authorization"],
+  credentials: true
+}));
 
 app.use("/uploads", express.static("uploads"));
 
+app.use(appRoutes);
 
-//routes
-app.use("/users", userRoutes); 
-app.use("/auth", authRoutes);
-app.use("/resumes", resumeRoutes);
-app.use("/vacancies", vacancyRoutes);
-app.use("/notifications", notificationRoutes);
-
-//for testing
-app.use(router.get("/dashboard", authMiddleware(), (req, res) => {
-  res.json({ message: "Добро пожаловать в панель управления!", user: req.user });
-}));
-
-
-//server
 const server = http.createServer(app);
 server.listen(port, () => {
   console.log(`Server is running on port ${port}`);

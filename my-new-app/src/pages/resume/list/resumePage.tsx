@@ -1,5 +1,5 @@
 import React, { useState } from "react";
-import { View, Text, TextInput, Button, FlatList, StyleSheet, TouchableOpacity } from "react-native";
+import { View, Text, TextInput, Button, FlatList, StyleSheet } from "react-native";
 import { useResume } from "../../../hooks/resume/useResume";
 
 const ResumePage = () => {
@@ -112,7 +112,13 @@ const ResumePage = () => {
             style={styles.textarea}
             multiline
             value={formData?.additionalInfo}
-            onChangeText={(text) => handleChange({ target: { name: "additionalInfo", value: text } })}
+            onChangeText={(text) =>
+              handleChange(
+                { target: { name: "additionalInfo", value: text } },
+                "additionalInfo", // Field name
+                null // Index is not required for non-array fields
+              )
+            }
           />
 
           <Button title="Сохранить" onPress={saveResume} />

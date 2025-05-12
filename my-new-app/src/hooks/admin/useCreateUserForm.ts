@@ -25,7 +25,7 @@ export const useCreateUserForm = () => {
     try {
       const token = await AsyncStorage.getItem("token");
       const res = await axios.post(
-        "http://localhost:3000/users/newUser",
+        "http://192.168.225.12:3000/users/newUser",
         formData,
         { headers: { Authorization: `Bearer ${token}` } }
       );

@@ -34,7 +34,7 @@ export const useNotification = (id: string | null) => {
       setIsLoading(true);
       // Запрос на получение уведомления по ID
       axios
-        .get(`http://localhost:3000/notifications/${id}`)
+        .get(`http://192.168.225.12:3000/notifications/${id}`)
         .then((response) => {
           setForm(response.data);
           setIsEdit(true);
@@ -72,11 +72,18 @@ export const useNotification = (id: string | null) => {
       formData.append("content", form.content);
 
       if (imageFile) {
-        formData.append("image", {
+        const file = {
           uri: imageFile.uri,
           type: imageFile.type,
           name: imageFile.name,
-        });
+        };
+
+        // Преобразуем imageFile в Blob перед отправкой в FormData
+        formData.append("image", {
+          uri: file.uri,
+          type: file.type,
+          name: file.name,
+        } as unknown as Blob); // Явно приводим тип к Blob
       }
 
       const token = await AsyncStorage.getItem("token");
@@ -84,10 +91,10 @@ export const useNotification = (id: string | null) => {
 
       // Если это редактирование, то отправляем PUT запрос, иначе POST
       if (isEdit && id) {
-        await axios.put(`http://localhost:3000/notifications/${id}`, formData, { headers });
+        await axios.put(`http://192.168.225.12:3000/notifications/${id}`, formData, { headers });
         Toast.show({ type: "success", text1: "Оповещение обновлено" });
       } else {
-        await axios.post("http://localhost:3000/notifications", formData, { headers });
+        await axios.post("http://192.168.225.12:3000/notifications", formData, { headers });
         Toast.show({ type: "success", text1: "Оповещение создано" });
       }
     } catch (error) {

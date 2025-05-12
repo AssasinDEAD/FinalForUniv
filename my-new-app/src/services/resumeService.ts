@@ -2,7 +2,7 @@ import axios from "axios";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import { Resume, ResumeWithUser, defaultResume } from "../types/resume";
 
-const API_URL = "http://localhost:3000/resumes";
+const API_URL = "http://192.168.225.12:3000/resumes";
 
 // Получение заголовков с авторизацией
 const getAuthHeaders = async () => {

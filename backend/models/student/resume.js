@@ -40,7 +40,4 @@ const Resume = db.define("Resume", {
     },
 });
 
-Resume.belongsTo(User, { foreignKey: "userId", onDelete: "CASCADE" });
-User.hasOne(Resume, { foreignKey: "userId", onDelete: "CASCADE" });
-
 module.exports = Resume;

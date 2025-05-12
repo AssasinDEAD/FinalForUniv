@@ -1,5 +1,6 @@
 import React, { useState } from "react";
-import { View, TextInput, Button, Text, StyleSheet, Picker } from "react-native";
+import { View, TextInput, Button, Text, StyleSheet } from "react-native";
+import { Picker } from '@react-native-picker/picker';
 import { useCreateUserForm } from "../../../hooks/admin/useCreateUserForm";
 
 const CreateUser = () => {

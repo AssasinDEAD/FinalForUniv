@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
 import axios from "axios";
-import { toast } from "react-native-toast-message";
+import Toast from "react-native-toast-message";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import { Vacancy } from "../../types/vacancy";
 
@@ -17,13 +17,13 @@ export const useVacancies = (role, showMy) => {
 
         const url =
           role === "company" && showMy
-            ? "http://localhost:3000/vacancies/my"
-            : "http://localhost:3000/vacancies";
+            ? "http://192.168.225.12:3000/vacancies/my"
+            : "http://192.168.225.12:3000/vacancies";
 
         const { data } = await axios.get(url, { headers });
         setVacancies(data);
       } catch {
-        toast.show({ type: "error", text1: "Не удалось загрузить вакансии" });
+        Toast.show({ type: "error", text1: "Не удалось загрузить вакансии" });
       } finally {
         setIsLoading(false);
       }

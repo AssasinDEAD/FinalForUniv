@@ -1,7 +1,5 @@
-const Vacancy = require("../models/com/vacancy");
-const User = require("../models/users");
+const { Vacancy, User }= require("../models");
 
-// Создать вакансию (только для компаний)
 exports.createVacancy = async (req, res) => {
   try {
     if (req.user.role !== "company") {
@@ -26,7 +24,6 @@ exports.createVacancy = async (req, res) => {
   }
 };
 
-// Получить все вакансии
 exports.getVacancies = async (req, res) => {
   try {
     const vacancies = await Vacancy.findAll({
@@ -40,7 +37,6 @@ exports.getVacancies = async (req, res) => {
   }
 };
 
-// Получить вакансию по ID
 exports.getVacancy = async (req, res) => {
   try {
     const vacancy = await Vacancy.findByPk(req.params.id, {
@@ -58,7 +54,6 @@ exports.getVacancy = async (req, res) => {
   }
 };
 
-// Обновить вакансию
 exports.updateVacancy = async (req, res) => {
   try {
     const vacancy = await Vacancy.findByPk(req.params.id);
@@ -79,7 +74,6 @@ exports.updateVacancy = async (req, res) => {
   }
 };
 
-// Удалить вакансию
 exports.deleteVacancy = async (req, res) => {
   try {
     const vacancy = await Vacancy.findByPk(req.params.id);
@@ -103,7 +97,7 @@ exports.deleteVacancy = async (req, res) => {
 
 exports.getMyVacancies = async (req, res) => {
   try {
-    const userId = req.user.id; // req.user заполняется из JWT
+    const userId = req.user.id; 
     const role = req.user.role;
 
     if (role !== "company") {

@@ -1,45 +1,68 @@
 import { useState, useEffect } from "react";
 import { useNavigation, useRoute, RouteProp } from "@react-navigation/native";
+import { StackNavigationProp } from "@react-navigation/stack";
 import Toast from "react-native-toast-message";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import axios from "axios";
-import jwtDecode from "jwt-decode";
+import { jwtDecode } from "jwt-decode";
 
-// Тип для параметров маршрута
-type NotificationRouteParams = {
-  id: string;
-};
-
-// Тип для навигации (в данном случае только для этого маршрута)
+// Типы для навигации
 type RootStackParamList = {
   NotificationList: undefined;
   EditNotification: { id: string };
+  // Добавьте другие экраны по необходимости
 };
 
-// Получаем параметры маршрута с правильным типом
+// Тип для navigation prop
+type NotificationDetailsNavigationProp = StackNavigationProp<
+  RootStackParamList,
+  'EditNotification'
+>;
+
+// Тип для route params
+type NotificationRouteProp = RouteProp<RootStackParamList, 'EditNotification'>;
+
+interface DecodedToken {
+  role: string;
+  [key: string]: any; // Для других возможных полей в токене
+}
+
+interface Notification {
+  id: string;
+  title: string;
+  content: string;
+  imageUrl?: string;
+  created_at?: string;
+}
+
 export const useNotificationDetails = () => {
-  const { params } = useRoute<RouteProp<RootStackParamList, "EditNotification">>(); // Указываем правильный тип
-  const { id } = params || {}; // Получаем id уведомления из параметров маршрута
-  const [notification, setNotification] = useState(null);
-  const [role, setRole] = useState("");
-  const navigation = useNavigation();
+  const navigation = useNavigation<NotificationDetailsNavigationProp>();
+  const route = useRoute<NotificationRouteProp>();
+  const { id } = route.params;
+  
+  const [notification, setNotification] = useState<Notification | null>(null);
+  const [role, setRole] = useState<string>("");
 
   useEffect(() => {
     const fetchNotification = async () => {
       try {
         const token = await AsyncStorage.getItem("token");
         if (token) {
-          // Расшифровка токена
-          const decoded = jwtDecode<{ role: string }>(token); // Объявление типа для результата
-          setRole(decoded.role); // Устанавливаем роль из расшифрованного токена
+          const decoded = jwtDecode<DecodedToken>(token);
+          setRole(decoded.role);
         }
 
         if (id) {
-          const response = await axios.get(`http://localhost:3000/notifications/${id}`);
+          const response = await axios.get<Notification>(
+            `http://192.168.225.12:3000/notifications/${id}`
+          );
           setNotification(response.data);
         }
       } catch (err) {
-        Toast.show({ type: "error", text1: "Ошибка загрузки оповещения" });
+        Toast.show({
+          type: "error",
+          text1: "Ошибка загрузки оповещения",
+        });
       }
     };
 
@@ -48,15 +71,19 @@ export const useNotificationDetails = () => {
 
   const handleDelete = async () => {
     if (!id) return;
-    const confirmed = confirm("Удалить это оповещение?");
-    if (confirmed) {
-      try {
-        await axios.delete(`http://localhost:3000/notifications/${id}`);
-        Toast.show({ type: "success", text1: "Оповещение удалено" });
-        navigation.navigate("NotificationList"); // Перенаправляем на список уведомлений
-      } catch {
-        Toast.show({ type: "error", text1: "Ошибка при удалении" });
-      }
+    
+    try {
+      await axios.delete(`http://192.168.225.12:3000/notifications/${id}`);
+      Toast.show({
+        type: "success",
+        text1: "Оповещение удалено",
+      });
+      navigation.navigate("NotificationList");
+    } catch {
+      Toast.show({
+        type: "error",
+        text1: "Ошибка при удалении",
+      });
     }
   };
 

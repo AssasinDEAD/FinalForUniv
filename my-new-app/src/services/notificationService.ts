@@ -2,7 +2,7 @@ import axios from "axios";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import { Notification } from "../types/notification";
 
-const API_URL = "http://localhost:3000/notifications";
+const API_URL = "http://192.168.225.12:3000/notifications";
 
 // Получаем заголовки с авторизацией
 const getAuthHeaders = async () => {

@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { toast } from "react-native-toast-message";
+import Toast from "react-native-toast-message";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import axios from "axios";
 import { Vacancy } from "../../types/vacancy";
@@ -15,12 +15,12 @@ export const useVacancyDetails = (id) => {
     const fetchVacancy = async () => {
       try {
         const token = await AsyncStorage.getItem("token");
-        const response = await axios.get(`http://localhost:3000/vacancies/${id}`, {
+        const response = await axios.get(`http://192.168.225.12:3000/vacancies/${id}`, {
           headers: { Authorization: `Bearer ${token}` },
         });
         setVacancy(response.data);
       } catch (e) {
-        toast.show({ type: "error", text1: "Ошибка загрузки вакансии" });
+        Toast.show({ type: "error", text1: "Ошибка загрузки вакансии" });
         console.error(e);
       } finally {
         setIsLoading(false);

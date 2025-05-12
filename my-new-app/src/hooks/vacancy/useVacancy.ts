@@ -1,5 +1,5 @@
 import { useState, useEffect } from "react";
-import { toast } from "react-native-toast-message";
+import Toast from "react-native-toast-message";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import axios from "axios";
 import { Vacancy } from "../../types/vacancy";
@@ -23,13 +23,13 @@ export const useVacancy = (id) => {
       const fetchVacancy = async () => {
         try {
           const token = await AsyncStorage.getItem("token");
-          const response = await axios.get(`http://localhost:3000/vacancies/${id}`, {
+          const response = await axios.get(`http://192.168.225.12:3000/vacancies/${id}`, {
             headers: { Authorization: `Bearer ${token}` },
           });
           setForm(response.data);
           setRequirementsInput(response.data.requirements.join(", "));
         } catch (e) {
-          toast.show({ type: "error", text1: "Ошибка загрузки вакансии" });
+          Toast.show({ type: "error", text1: "Ошибка загрузки вакансии" });
           console.error(e);
         } finally {
           setIsLoading(false);
@@ -63,18 +63,18 @@ export const useVacancy = (id) => {
     try {
       const token = await AsyncStorage.getItem("token");
       if (isEdit && id) {
-        await axios.put(`http://localhost:3000/vacancies/${id}`, vacancyToSend, {
+        await axios.put(`http://192.168.225.12:3000/vacancies/${id}`, vacancyToSend, {
           headers: { Authorization: `Bearer ${token}` },
         });
-        toast.show({ type: "success", text1: "Вакансия обновлена" });
+        Toast.show({ type: "success", text1: "Вакансия обновлена" });
       } else {
-        await axios.post("http://localhost:3000/vacancies", vacancyToSend, {
+        await axios.post("http://192.168.225.12:3000/vacancies", vacancyToSend, {
           headers: { Authorization: `Bearer ${token}` },
         });
-        toast.show({ type: "success", text1: "Вакансия создана" });
+        Toast.show({ type: "success", text1: "Вакансия создана" });
       }
     } catch (e) {
-      toast.show({ type: "error", text1: "Ошибка при сохранении вакансии" });
+      Toast.show({ type: "error", text1: "Ошибка при сохранении вакансии" });
       console.error(e);
     }
   };

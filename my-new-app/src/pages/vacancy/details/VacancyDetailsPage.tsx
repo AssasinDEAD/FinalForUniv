@@ -1,15 +1,36 @@
-import React, { useEffect, useState } from "react";
+import React from "react";
 import { View, Text, Button, Alert, StyleSheet } from "react-native";
-import { useRoute, useNavigation } from "@react-navigation/native"; // Используем React Navigation для работы с роутингом в React Native
+import { useRoute, useNavigation, RouteProp } from "@react-navigation/native";
+import { StackNavigationProp } from "@react-navigation/stack";
 import { useVacancyDetails } from "../../../hooks/vacancy/useVacancyDetails";
 import { useCurrentUserId } from "../../../hooks/useCurrentUserId";
 import { deleteVacancy } from "../../../services/vacancyService";
-import { toast } from "react-toastify"; // Toast, возможно, придется заменить на React Native аналог
+import Toast from "react-native-toast-message";
+
+// Определите типы для навигации
+type RootStackParamList = {
+  Vacancies: undefined;
+  EditVacancy: { id: string };
+  VacancyDetails: { id: string };
+};
+
+type VacancyDetailsRouteProp = RouteProp<RootStackParamList, "VacancyDetails">;
+type VacancyDetailsNavigationProp = StackNavigationProp<RootStackParamList, "VacancyDetails">;
+
+interface Vacancy {
+  id: string;
+  title: string;
+  description: string;
+  requirements: string[];
+  location: string;
+  salary: string;
+  userId?: string;
+}
 
 const VacancyDetailsPage = () => {
-  const route = useRoute();
-  const navigation = useNavigation();
-  const { id } = route.params; // В React Native для работы с параметрами роутинга используем useRoute
+  const route = useRoute<VacancyDetailsRouteProp>();
+  const navigation = useNavigation<VacancyDetailsNavigationProp>();
+  const { id } = route.params;
   const currentUserId = useCurrentUserId();
   const { vacancy, isLoading } = useVacancyDetails(id);
 
@@ -22,10 +43,16 @@ const VacancyDetailsPage = () => {
         onPress: async () => {
           try {
             await deleteVacancy(id);
-            toast.success("Вакансия удалена");
-            navigation.navigate("Vacancies"); // Перенаправление в список вакансий
+            Toast.show({
+              type: "success",
+              text1: "Вакансия удалена",
+            });
+            navigation.navigate("Vacancies");
           } catch (error) {
-            toast.error("Ошибка при удалении вакансии");
+            Toast.show({
+              type: "error",
+              text1: "Ошибка при удалении вакансии",
+            });
           }
         },
       },
@@ -33,7 +60,7 @@ const VacancyDetailsPage = () => {
   };
 
   const handleEdit = () => {
-    navigation.navigate("EditVacancy", { id }); // Переход на страницу редактирования вакансии
+    navigation.navigate("EditVacancy", { id });
   };
 
   if (isLoading) return <Text>Загрузка...</Text>;

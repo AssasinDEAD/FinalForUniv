@@ -1,13 +1,26 @@
-import React, { useState, useEffect } from "react";
+import React from "react";
 import { View, Text, TextInput, Button, StyleSheet, Alert } from "react-native";
-import { useNavigation, useRoute } from "@react-navigation/native"; // React Navigation
-import { useVacancy } from "../../../hooks/vacancy/useVacancy"; // Кастомный хук для работы с вакансией
+import { useNavigation, useRoute, RouteProp } from "@react-navigation/native";
+import { StackNavigationProp } from "@react-navigation/stack";
+import { useVacancy } from "../../../hooks/vacancy/useVacancy";
 
-const VacancyFormPage = () => {
-  const route = useRoute();
-  const navigation = useNavigation();
-  const { id } = route.params || {}; // Получаем параметр id из маршрута
+// Определите типы для навигации
+type RootStackParamList = {
+  Vacancies: undefined;
+  VacancyForm: { id?: string };
+};
 
+type VacancyFormRouteProp = RouteProp<RootStackParamList, "VacancyForm">;
+type VacancyFormNavigationProp = StackNavigationProp<RootStackParamList, "VacancyForm">;
+
+interface VacancyFormProps {
+  navigation: VacancyFormNavigationProp;
+  route: VacancyFormRouteProp;
+}
+
+const VacancyFormPage: React.FC<VacancyFormProps> = ({ navigation, route }) => {
+  const { id } = route.params || {};
+  
   const {
     form,
     handleChange,
@@ -19,8 +32,22 @@ const VacancyFormPage = () => {
   } = useVacancy(id);
 
   const onSubmit = async () => {
-    await handleSubmit();
-    navigation.navigate("Vacancies"); // Переход к списку вакансий
+    try {
+      await handleSubmit();
+      navigation.navigate("Vacancies");
+    } catch (error) {
+      Alert.alert("Ошибка", "Не удалось сохранить вакансию");
+    }
+  };
+
+  // Адаптер для handleChange
+  const handleFieldChange = (field: keyof typeof form) => (text: string) => {
+    handleChange({ 
+      target: { 
+        name: field, 
+        value: text 
+      } 
+    } as React.ChangeEvent<HTMLInputElement>);
   };
 
   if (isLoading) return <Text>Загрузка...</Text>;
@@ -35,14 +62,14 @@ const VacancyFormPage = () => {
         style={styles.input}
         placeholder="Название"
         value={form.title}
-        onChangeText={(text) => handleChange("title", text)}
+        onChangeText={handleFieldChange("title")}
       />
       
       <TextInput
         style={[styles.input, styles.textarea]}
         placeholder="Описание"
         value={form.description}
-        onChangeText={(text) => handleChange("description", text)}
+        onChangeText={handleFieldChange("description")}
         multiline
       />
       
@@ -57,17 +84,20 @@ const VacancyFormPage = () => {
         style={styles.input}
         placeholder="Локация"
         value={form.location}
-        onChangeText={(text) => handleChange("location", text)}
+        onChangeText={handleFieldChange("location")}
       />
       
       <TextInput
         style={styles.input}
         placeholder="Зарплата"
         value={form.salary}
-        onChangeText={(text) => handleChange("salary", text)}
+        onChangeText={handleFieldChange("salary")}
       />
       
-      <Button title={isEdit ? "Сохранить" : "Создать"} onPress={onSubmit} />
+      <Button 
+        title={isEdit ? "Сохранить" : "Создать"} 
+        onPress={onSubmit} 
+      />
     </View>
   );
 };
@@ -91,6 +121,7 @@ const styles = StyleSheet.create({
   },
   textarea: {
     height: 100,
+    textAlignVertical: "top",
   },
 });
 

@@ -1,13 +1,14 @@
 import React from "react";
 import { View, TextInput, Button, Text, StyleSheet, Alert } from "react-native";
-import { useLoginForm } from "../../../hooks/auth/useLoginForm";
+import { useLoginForm } from "../../../hooks/auth/useLoginForms";
 
 const Login = () => {
   const { email, password, setEmail, setPassword, handleLogin } = useLoginForm();
 
   const handleSubmit = async () => {
     try {
-      await handleLogin();
+      // Передаем email и password в handleLogin
+      await handleLogin({ email, password });
     } catch (error) {
       Alert.alert("Ошибка", "Неправильный логин или пароль");
     }
@@ -23,7 +24,6 @@ const Login = () => {
           value={email}
           onChangeText={setEmail}
           keyboardType="email-address"
-          required
         />
         <TextInput
           style={styles.input}
@@ -31,7 +31,6 @@ const Login = () => {
           value={password}
           onChangeText={setPassword}
           secureTextEntry
-          required
         />
         <Button title="Войти" onPress={handleSubmit} color="#007BFF" />
       </View>

@@ -23,7 +23,7 @@ export const useLoginForm = () => {
     e.preventDefault();
 
     try {
-      const { data } = await axios.post("http://localhost:3000/auth/login", {
+      const { data } = await axios.post("http://192.168.225.12:3000/auth/login", {
         email,
         password,
       });

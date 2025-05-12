@@ -5,7 +5,7 @@ import AsyncStorage from "@react-native-async-storage/async-storage";
 
 export const useCurrentUser = () => {
   const [user, setUser] = useState(null);
-
+  const [loading, setLoading] = useState(true);
   useEffect(() => {
     const fetchUser = async () => {
       try {
@@ -18,6 +18,7 @@ export const useCurrentUser = () => {
         const userFromStorage = await AsyncStorage.getItem("user");
         if (userFromStorage) {
           setUser(JSON.parse(userFromStorage));
+          setLoading(false);
         }
       } catch (error) {
         Toast.show({ type: "error", text1: "Ошибка загрузки данных пользователя" });
@@ -27,5 +28,5 @@ export const useCurrentUser = () => {
     fetchUser();
   }, []);
 
-  return { user };
+  return { user, loading };
 };
