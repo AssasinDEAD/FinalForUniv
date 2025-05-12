@@ -1,0 +1,2713 @@
+C:\Users\ARMAGEDDON\Documents\testMob\my-new-app\src\components\protectedRoute.tsx
+
+import React, { useEffect, useState } from "react";
+import { View, Text, ActivityIndicator } from "react-native";
+import { useNavigation } from "@react-navigation/native";
+import AsyncStorage from "@react-native-async-storage/async-storage";
+import axios from "axios";
+import Toast from "react-native-toast-message";
+
+interface ProtectedRouteProps {
+  requiredRole: string | string[];
+}
+
+const ProtectedRoute: React.FC<ProtectedRouteProps> = ({ requiredRole }) => {
+  const [authorized, setAuthorized] = useState<boolean | null>(null);
+  const [redirectPath, setRedirectPath] = useState<string>("/login");
+  const navigation = useNavigation<any>(); // Добавление типа для navigation
+
+  useEffect(() => {
+    const checkAuth = async () => {
+      const token = await AsyncStorage.getItem("token");
+      if (!token) {
+        setAuthorized(false);
+        return;
+      }
+
+      try {
+        const { data: user } = await axios.get("http://localhost:3000/auth/me", {
+          headers: { Authorization: `Bearer ${token}` },
+        });
+
+        await AsyncStorage.setItem("user", JSON.stringify(user));
+
+        if (requiredRole) {
+          const roles = Array.isArray(requiredRole) ? requiredRole : [requiredRole];
+          if (!roles.includes(user.role)) {
+            Toast.show({ type: "error", text1: "У вас нет доступа!" });
+            setRedirectPath("/"); 
+            setAuthorized(false);
+            return;
+          }
+        }
+
+        setAuthorized(true);
+      } catch (err) {
+        setAuthorized(false);
+      }
+    };
+
+    checkAuth();
+  }, [requiredRole]);
+
+  if (authorized === null) {
+    return (
+      <View style={{ flex: 1, justifyContent: "center", alignItems: "center" }}>
+        <ActivityIndicator size="large" color="#007bff" />
+        <Text>Загрузка...</Text>
+      </View>
+    );
+  }
+
+  if (!authorized) {
+    navigation.navigate(redirectPath);
+    return null;
+  }
+
+  return (
+    <View style={{ flex: 1, justifyContent: "center", alignItems: "center" }}>
+      <Text>Добро пожаловать! Вы авторизованы.</Text>
+    </View>
+  );
+};
+
+export default ProtectedRoute;
+
+
+C:\Users\ARMAGEDDON\Documents\testMob\my-new-app\src\components\resumeCard.tsx
+
+import React from 'react';
+import { View, Text, TouchableOpacity, StyleSheet } from 'react-native';
+import { useNavigation } from '@react-navigation/native';
+
+// Определяем интерфейс для резюме
+interface Resume {
+  additionalInfo: string;
+  skills: any[];
+  experience: any[];
+}
+
+const ResumeCard = ({ resume }: { resume: Resume | null }) => {
+  const navigation = useNavigation<any>(); // Параметры навигации должны быть типизированы
+
+  // Проверяем, если резюме отсутствует, отображаем сообщение
+  if (!resume) {
+    return <Text>Резюме не найдено</Text>;
+  }
+
+  return (
+    <TouchableOpacity
+      style={styles.card}
+      onPress={() => navigation.navigate('ResumeDetails', { resumeId: resume.additionalInfo })}
+    >
+      <Text style={styles.title}>{resume.additionalInfo || 'Без названия'}</Text>
+      <Text>Навыки: {resume.skills.length}</Text>
+      <Text>Опыт: {resume.experience.length}</Text>
+    </TouchableOpacity>
+  );
+};
+
+const styles = StyleSheet.create({
+  card: {
+    borderWidth: 1,
+    borderColor: '#ddd',
+    padding: 16,
+    borderRadius: 8,
+    marginBottom: 16,
+    backgroundColor: '#fff',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.25,
+    shadowRadius: 3.5,
+    elevation: 5,
+  },
+  title: {
+    fontSize: 18,
+    fontWeight: 'bold',
+    marginBottom: 8,
+  },
+});
+
+export default ResumeCard;
+
+C:\Users\ARMAGEDDON\Documents\testMob\my-new-app\src\hooks\admin\useCreateUserForm.ts
+
+import { useState } from "react";
+import axios from "axios";
+import { useNavigation } from "@react-navigation/native";
+import Toast from "react-native-toast-message";
+import AsyncStorage from "@react-native-async-storage/async-storage";
+
+export const useCreateUserForm = () => {
+  const [formData, setFormData] = useState({
+    name: "",
+    email: "",
+    password: "",
+    role: "student",
+  });
+
+  // Используем типизацию для навигации
+  const navigation = useNavigation<any>(); // Используем any или настройте типы навигации
+
+  const handleChange = (e) => {
+    const { name, value } = e.target;
+    setFormData((prev) => ({ ...prev, [name]: value }));
+  };
+
+  const handleSubmit = async (e) => {
+    e.preventDefault();
+    try {
+      const token = await AsyncStorage.getItem("token");
+      const res = await axios.post(
+        "http://localhost:3000/users/newUser",
+        formData,
+        { headers: { Authorization: `Bearer ${token}` } }
+      );
+
+      Toast.show({ type: "success", text1: res.data.message });
+      navigation.navigate("Home"); // Navigate to home or another screen after user creation
+    } catch (error) {
+      Toast.show({
+        type: "error",
+        text1: error.response?.data?.message || "Ошибка при создании пользователя",
+      });
+    }
+  };
+
+  return { formData, handleChange, handleSubmit };
+};
+
+
+C:\Users\ARMAGEDDON\Documents\testMob\my-new-app\src\hooks\auth\useLoginForms.ts
+
+import { useState } from "react";
+import axios from "axios";
+import { useNavigation } from "@react-navigation/native";
+import { StackNavigationProp } from '@react-navigation/stack';  // Импортируем типы для навигации
+import Toast from "react-native-toast-message";
+import AsyncStorage from "@react-native-async-storage/async-storage";
+
+// Описание типов для навигации
+type RootStackParamList = {
+  Dashboard: undefined;  // Тип для экрана "Dashboard"
+};
+
+type NavigationProp = StackNavigationProp<RootStackParamList, 'Dashboard'>;  // Тип для навигации на экран "Dashboard"
+
+export const useLoginForm = () => {
+  const [email, setEmail] = useState("");
+  const [password, setPassword] = useState("");
+
+  // Используем типизацию для навигации
+  const navigation = useNavigation<NavigationProp>();  
+
+  const handleLogin = async (e) => {
+    e.preventDefault();
+
+    try {
+      const { data } = await axios.post("http://localhost:3000/auth/login", {
+        email,
+        password,
+      });
+
+      // Сохраняем токен и данные пользователя в AsyncStorage
+      await AsyncStorage.setItem("token", data.token);
+      await AsyncStorage.setItem("user", JSON.stringify(data.user));
+
+      // Навигация на экран "Dashboard" после успешного входа
+      navigation.navigate("Dashboard");
+      Toast.show({ type: "success", text1: data.message || "Успешно!" });
+    } catch (err) {
+      // Выводим сообщение об ошибке
+      const errorMessage = err.response?.data?.message || "Ошибка";
+      Toast.show({ type: "error", text1: errorMessage });
+    }
+  };
+
+  return {
+    email,
+    password,
+    setEmail,
+    setPassword,
+    handleLogin,
+  };
+};
+
+
+C:\Users\ARMAGEDDON\Documents\testMob\my-new-app\src\hooks\notification\useNotification.ts
+
+import { useState, useEffect } from "react";
+import Toast from "react-native-toast-message";
+import { useNavigation } from "@react-navigation/native";
+import axios from "axios";
+import AsyncStorage from "@react-native-async-storage/async-storage";
+import * as ImagePicker from "react-native-image-picker";
+
+// Интерфейс для формы уведомления
+interface NotificationForm {
+  title: string;
+  content: string;
+  imageUrl: string;
+}
+
+// Интерфейс для файла изображения
+interface ImageFile {
+  uri: string;
+  type: string;
+  name: string;
+}
+
+export const useNotification = (id: string | null) => {
+  const [form, setForm] = useState<NotificationForm>({
+    title: "",
+    content: "",
+    imageUrl: "", // Опционально для консистентности
+  });
+  const [imageFile, setImageFile] = useState<ImageFile | null>(null); // Тип для imageFile
+  const [isEdit, setIsEdit] = useState(!!id);
+  const [isLoading, setIsLoading] = useState(false);
+
+  useEffect(() => {
+    if (id) {
+      setIsLoading(true);
+      // Запрос на получение уведомления по ID
+      axios
+        .get(`http://localhost:3000/notifications/${id}`)
+        .then((response) => {
+          setForm(response.data);
+          setIsEdit(true);
+        })
+        .catch(() => Toast.show({ type: "error", text1: "Ошибка при загрузке оповещения" }))
+        .finally(() => setIsLoading(false));
+    }
+  }, [id]);
+
+  const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const { name, value } = e.target;
+    setForm((prev) => ({ ...prev, [name]: value }));
+  };
+
+  const handleFileChange = () => {
+    ImagePicker.launchImageLibrary(
+      { mediaType: "photo", quality: 1 },
+      (response) => {
+        if (response.assets && response.assets[0]) {
+          const asset = response.assets[0];
+          setImageFile({
+            uri: asset.uri,
+            type: asset.type,
+            name: asset.fileName || "image.jpg", // Используем имя файла или задаем дефолтное
+          });
+        }
+      }
+    );
+  };
+
+  const handleSubmit = async () => {
+    try {
+      const formData = new FormData();
+      formData.append("title", form.title);
+      formData.append("content", form.content);
+
+      if (imageFile) {
+        formData.append("image", {
+          uri: imageFile.uri,
+          type: imageFile.type,
+          name: imageFile.name,
+        });
+      }
+
+      const token = await AsyncStorage.getItem("token");
+      const headers = { Authorization: `Bearer ${token}` };
+
+      // Если это редактирование, то отправляем PUT запрос, иначе POST
+      if (isEdit && id) {
+        await axios.put(`http://localhost:3000/notifications/${id}`, formData, { headers });
+        Toast.show({ type: "success", text1: "Оповещение обновлено" });
+      } else {
+        await axios.post("http://localhost:3000/notifications", formData, { headers });
+        Toast.show({ type: "success", text1: "Оповещение создано" });
+      }
+    } catch (error) {
+      Toast.show({ type: "error", text1: "Ошибка при сохранении" });
+    }
+  };
+
+  return {
+    form,
+    isEdit,
+    isLoading,
+    handleChange,
+    handleFileChange,
+    handleSubmit,
+    imageFile,
+  };
+};
+
+
+C:\Users\ARMAGEDDON\Documents\testMob\my-new-app\src\hooks\notification\useNotificationDetails.ts
+
+import { useState, useEffect } from "react";
+import { useNavigation, useRoute, RouteProp } from "@react-navigation/native";
+import Toast from "react-native-toast-message";
+import AsyncStorage from "@react-native-async-storage/async-storage";
+import axios from "axios";
+import jwtDecode from "jwt-decode";
+
+// Тип для параметров маршрута
+type NotificationRouteParams = {
+  id: string;
+};
+
+// Тип для навигации (в данном случае только для этого маршрута)
+type RootStackParamList = {
+  NotificationList: undefined;
+  EditNotification: { id: string };
+};
+
+// Получаем параметры маршрута с правильным типом
+export const useNotificationDetails = () => {
+  const { params } = useRoute<RouteProp<RootStackParamList, "EditNotification">>(); // Указываем правильный тип
+  const { id } = params || {}; // Получаем id уведомления из параметров маршрута
+  const [notification, setNotification] = useState(null);
+  const [role, setRole] = useState("");
+  const navigation = useNavigation();
+
+  useEffect(() => {
+    const fetchNotification = async () => {
+      try {
+        const token = await AsyncStorage.getItem("token");
+        if (token) {
+          // Расшифровка токена
+          const decoded = jwtDecode<{ role: string }>(token); // Объявление типа для результата
+          setRole(decoded.role); // Устанавливаем роль из расшифрованного токена
+        }
+
+        if (id) {
+          const response = await axios.get(`http://localhost:3000/notifications/${id}`);
+          setNotification(response.data);
+        }
+      } catch (err) {
+        Toast.show({ type: "error", text1: "Ошибка загрузки оповещения" });
+      }
+    };
+
+    fetchNotification();
+  }, [id]);
+
+  const handleDelete = async () => {
+    if (!id) return;
+    const confirmed = confirm("Удалить это оповещение?");
+    if (confirmed) {
+      try {
+        await axios.delete(`http://localhost:3000/notifications/${id}`);
+        Toast.show({ type: "success", text1: "Оповещение удалено" });
+        navigation.navigate("NotificationList"); // Перенаправляем на список уведомлений
+      } catch {
+        Toast.show({ type: "error", text1: "Ошибка при удалении" });
+      }
+    }
+  };
+
+  const handleEdit = () => {
+    navigation.navigate("EditNotification", { id });
+  };
+
+  return {
+    notification,
+    role,
+    handleDelete,
+    handleEdit,
+  };
+};
+
+
+C:\Users\ARMAGEDDON\Documents\testMob\my-new-app\src\hooks\notification\useNotifications.ts
+
+import { useEffect, useState } from "react";
+import Toast from "react-native-toast-message";
+
+import axios from "axios";
+import AsyncStorage from "@react-native-async-storage/async-storage";
+
+export const useNotifications = () => {
+  const [notifications, setNotifications] = useState([]);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    const fetchNotifications = async () => {
+      try {
+        const token = await AsyncStorage.getItem("token");
+        const response = await axios.get("http://localhost:3000/notifications", {
+          headers: { Authorization: `Bearer ${token}` },
+        });
+        setNotifications(response.data);
+      } catch (error) {
+        Toast.show({ type: "error", text1: "Не удалось загрузить оповещения" });
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    fetchNotifications();
+  }, []);
+
+  return { notifications, loading };
+};
+
+C:\Users\ARMAGEDDON\Documents\testMob\my-new-app\src\hooks\resume\useResume.ts
+
+import { useState, useEffect } from "react";
+import Toast from "react-native-toast-message";
+
+import { useNavigation } from "@react-navigation/native";
+import AsyncStorage from "@react-native-async-storage/async-storage";
+import axios from "axios";
+import { Resume } from "../../types/resume";
+import { getResume, updateResume } from "../../services/resumeService";
+
+export const useResume = () => {
+  const [resume, setResume] = useState(null);
+  const [formData, setFormData] = useState(null);
+  const [isEditing, setIsEditing] = useState(false);
+  const [loading, setLoading] = useState(true);
+  const navigation = useNavigation();
+
+  useEffect(() => {
+    const fetchResume = async () => {
+      try {
+        const token = await AsyncStorage.getItem("token");
+        const userResume = await getResume(token);
+        setResume(userResume);
+        setFormData(userResume);
+      } catch (error) {
+        Toast.show({ type: "error", text1: "Ошибка загрузки резюме" });
+        console.error(error);
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    fetchResume();
+  }, []);
+
+  const handleChange = (e, field, index) => {
+    if (!formData) return;
+
+    setFormData((prev) => {
+      if (!prev) return prev;
+      if (Array.isArray(prev[field])) {
+        return {
+          ...prev,
+          [field]: prev[field].map((item, i) =>
+            i === index ? { ...item, [e.target.name]: e.target.value } : item
+          ),
+        };
+      } else {
+        return {
+          ...prev,
+          [field]: e.target.value,
+        };
+      }
+    });
+  };
+
+  const addItem = (field, newItem) => {
+    if (!formData) return;
+    setFormData((prev) => ({
+      ...prev,
+      [field]: [...prev[field], newItem],
+    }));
+  };
+
+  const removeItem = (field, index) => {
+    if (!formData) return;
+    setFormData((prev) => ({
+      ...prev,
+      [field]: prev[field].filter((_, i) => i !== index),
+    }));
+  };
+
+  const saveResume = async () => {
+    if (!formData) return;
+
+    try {
+      const token = await AsyncStorage.getItem("token");
+      await updateResume(token, formData);
+      Toast.show({ type: "success", text1: "Резюме обновлено" });
+      setResume(formData);
+      setIsEditing(false);
+      navigation.goBack(); // Go back after saving
+    } catch (error) {
+      Toast.show({ type: "error", text1: "Ошибка при обновлении резюме" });
+      console.error(error);
+    }
+  };
+
+  return {
+    resume,
+    formData,
+    isEditing,
+    setIsEditing,
+    handleChange,
+    addItem,
+    removeItem,
+    saveResume,
+    loading,
+  };
+};
+
+
+C:\Users\ARMAGEDDON\Documents\testMob\my-new-app\src\hooks\resume\useResumeDetails.ts
+
+import { useState, useEffect } from "react";
+import Toast from "react-native-toast-message";
+
+import AsyncStorage from "@react-native-async-storage/async-storage";
+import axios from "axios";
+import { ResumeWithUser } from "../../types/resume";
+
+export const useResumeDetails = (id) => {
+  const [resume, setResume] = useState(null);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    const fetchResume = async () => {
+      try {
+        const token = await AsyncStorage.getItem("token");
+        const response = await axios.get(`http://localhost:3000/resumes/${id}`, {
+          headers: { Authorization: `Bearer ${token}` },
+        });
+        setResume(response.data);
+      } catch (e) {
+        Toast.show({ type: "error", text1: "Ошибка при загрузке резюме" });
+        console.error(e);
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    fetchResume();
+  }, [id]);
+
+  return { resume, loading };
+};
+
+
+C:\Users\ARMAGEDDON\Documents\testMob\my-new-app\src\hooks\resume\useResumes.ts
+
+import { useState, useEffect } from "react";
+import Toast from "react-native-toast-message";
+
+import AsyncStorage from "@react-native-async-storage/async-storage";
+import axios from "axios";
+import { ResumeWithUser } from "../../types/resume";
+
+export const useResumes = () => {
+  const [resumes, setResumes] = useState([]);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    const fetchResumesData = async () => {
+      try {
+        const token = await AsyncStorage.getItem("token");
+        const response = await axios.get("http://localhost:3000/resumes", {
+          headers: { Authorization: `Bearer ${token}` },
+        });
+        setResumes(response.data);
+      } catch (e) {
+        Toast.show({ type: "error", text1: "Ошибка при загрузке резюме" });
+        console.error(e);
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    fetchResumesData();
+  }, []);
+
+  return { resumes, loading };
+};
+
+C:\Users\ARMAGEDDON\Documents\testMob\my-new-app\src\hooks\vacancy\useVacancies.ts
+
+import { useEffect, useState } from "react";
+import axios from "axios";
+import { toast } from "react-native-toast-message";
+import AsyncStorage from "@react-native-async-storage/async-storage";
+import { Vacancy } from "../../types/vacancy";
+
+export const useVacancies = (role, showMy) => {
+  const [vacancies, setVacancies] = useState([]);
+  const [isLoading, setIsLoading] = useState(false);
+
+  useEffect(() => {
+    const fetchVacancies = async () => {
+      setIsLoading(true);
+      try {
+        const token = await AsyncStorage.getItem("token");
+        const headers = { Authorization: `Bearer ${token}` };
+
+        const url =
+          role === "company" && showMy
+            ? "http://localhost:3000/vacancies/my"
+            : "http://localhost:3000/vacancies";
+
+        const { data } = await axios.get(url, { headers });
+        setVacancies(data);
+      } catch {
+        toast.show({ type: "error", text1: "Не удалось загрузить вакансии" });
+      } finally {
+        setIsLoading(false);
+      }
+    };
+
+    if (role) fetchVacancies();
+  }, [role, showMy]);
+
+  return { vacancies, isLoading };
+};
+
+
+C:\Users\ARMAGEDDON\Documents\testMob\my-new-app\src\hooks\vacancy\useVacancy.ts
+
+import { useState, useEffect } from "react";
+import { toast } from "react-native-toast-message";
+import AsyncStorage from "@react-native-async-storage/async-storage";
+import axios from "axios";
+import { Vacancy } from "../../types/vacancy";
+
+export const useVacancy = (id) => {
+  const [form, setForm] = useState({
+    title: "",
+    description: "",
+    requirements: [],
+    location: "",
+    salary: "",
+  });
+  const [requirementsInput, setRequirementsInput] = useState("");
+  const [isLoading, setIsLoading] = useState(false);
+
+  const isEdit = Boolean(id);
+
+  useEffect(() => {
+    if (isEdit && id) {
+      setIsLoading(true);
+      const fetchVacancy = async () => {
+        try {
+          const token = await AsyncStorage.getItem("token");
+          const response = await axios.get(`http://localhost:3000/vacancies/${id}`, {
+            headers: { Authorization: `Bearer ${token}` },
+          });
+          setForm(response.data);
+          setRequirementsInput(response.data.requirements.join(", "));
+        } catch (e) {
+          toast.show({ type: "error", text1: "Ошибка загрузки вакансии" });
+          console.error(e);
+        } finally {
+          setIsLoading(false);
+        }
+      };
+
+      fetchVacancy();
+    }
+  }, [id]);
+
+  const handleChange = (e) => {
+    const { name, value } = e.target;
+    setForm((prev) => ({ ...prev, [name]: value }));
+  };
+
+  const handleRequirementsChange = (e) => {
+    setRequirementsInput(e.target.value);
+  };
+
+  const handleSubmit = async () => {
+    const requirementsArray = requirementsInput
+      .split(",")
+      .map((r) => r.trim())
+      .filter((r) => r.length > 0);
+
+    const vacancyToSend = {
+      ...form,
+      requirements: requirementsArray,
+    };
+
+    try {
+      const token = await AsyncStorage.getItem("token");
+      if (isEdit && id) {
+        await axios.put(`http://localhost:3000/vacancies/${id}`, vacancyToSend, {
+          headers: { Authorization: `Bearer ${token}` },
+        });
+        toast.show({ type: "success", text1: "Вакансия обновлена" });
+      } else {
+        await axios.post("http://localhost:3000/vacancies", vacancyToSend, {
+          headers: { Authorization: `Bearer ${token}` },
+        });
+        toast.show({ type: "success", text1: "Вакансия создана" });
+      }
+    } catch (e) {
+      toast.show({ type: "error", text1: "Ошибка при сохранении вакансии" });
+      console.error(e);
+    }
+  };
+
+  return {
+    form,
+    setForm,
+    handleChange,
+    handleRequirementsChange,
+    requirementsInput,
+    handleSubmit,
+    isLoading,
+    isEdit,
+  };
+};
+
+C:\Users\ARMAGEDDON\Documents\testMob\my-new-app\src\hooks\vacancy\useVacancyDetails.ts
+import { useEffect, useState } from "react";
+import { toast } from "react-native-toast-message";
+import AsyncStorage from "@react-native-async-storage/async-storage";
+import axios from "axios";
+import { Vacancy } from "../../types/vacancy";
+
+export const useVacancyDetails = (id) => {
+  const [vacancy, setVacancy] = useState(null);
+  const [isLoading, setIsLoading] = useState(false);
+
+  useEffect(() => {
+    if (!id) return;
+    setIsLoading(true);
+
+    const fetchVacancy = async () => {
+      try {
+        const token = await AsyncStorage.getItem("token");
+        const response = await axios.get(`http://localhost:3000/vacancies/${id}`, {
+          headers: { Authorization: `Bearer ${token}` },
+        });
+        setVacancy(response.data);
+      } catch (e) {
+        toast.show({ type: "error", text1: "Ошибка загрузки вакансии" });
+        console.error(e);
+      } finally {
+        setIsLoading(false);
+      }
+    };
+
+    fetchVacancy();
+  }, [id]);
+
+  return { vacancy, isLoading };
+};
+
+
+C:\Users\ARMAGEDDON\Documents\testMob\my-new-app\src\hooks\useCurrentUser.ts
+
+import { useEffect, useState } from "react";
+import Toast from "react-native-toast-message";
+
+import AsyncStorage from "@react-native-async-storage/async-storage";
+
+export const useCurrentUser = () => {
+  const [user, setUser] = useState(null);
+
+  useEffect(() => {
+    const fetchUser = async () => {
+      try {
+        const token = await AsyncStorage.getItem("token");
+        if (!token) {
+          Toast.show({ type: "error", text1: "Вы не авторизованы" });
+          return;
+        }
+
+        const userFromStorage = await AsyncStorage.getItem("user");
+        if (userFromStorage) {
+          setUser(JSON.parse(userFromStorage));
+        }
+      } catch (error) {
+        Toast.show({ type: "error", text1: "Ошибка загрузки данных пользователя" });
+      }
+    };
+
+    fetchUser();
+  }, []);
+
+  return { user };
+};
+
+C:\Users\ARMAGEDDON\Documents\testMob\my-new-app\src\hooks\useCurrentUserId.ts
+
+import { useMemo } from "react";
+import AsyncStorage from "@react-native-async-storage/async-storage";
+
+export const useCurrentUserId = () => {
+  return useMemo(() => {
+    const fetchUserId = async () => {
+      const token = await AsyncStorage.getItem("token");
+      if (!token) return null;
+
+      try {
+        const payload = JSON.parse(
+          Buffer.from(token.split(".")[1], "base64").toString("utf8")
+        );
+        return payload.id;
+      } catch {
+        console.error("Не удалось декодировать токен");
+        return null;
+      }
+    };
+
+    return fetchUserId();
+  }, []);
+};
+
+C:\Users\ARMAGEDDON\Documents\testMob\my-new-app\src\hooks\useUserRole.ts
+
+import { useState, useEffect } from "react";
+import AsyncStorage from "@react-native-async-storage/async-storage";
+
+export const useUserRole = () => {
+  const [role, setRole] = useState("");
+
+  useEffect(() => {
+    const fetchRole = async () => {
+      const token = await AsyncStorage.getItem("token");
+      if (!token) return;
+
+      try {
+        const payload = JSON.parse(
+          Buffer.from(token.split(".")[1], "base64").toString("utf8")
+        );
+        setRole(payload.role);
+      } catch {
+        console.error("Ошибка декодирования токена");
+      }
+    };
+
+    fetchRole();
+  }, []);
+
+  return role;
+};
+C:\Users\ARMAGEDDON\Documents\testMob\my-new-app\src\pages\admin\createUser\createUser.tsx
+
+import React, { useState } from "react";
+import { View, TextInput, Button, Text, StyleSheet, Picker } from "react-native";
+import { useCreateUserForm } from "../../../hooks/admin/useCreateUserForm";
+
+const CreateUser = () => {
+  const { formData, handleChange, handleSubmit } = useCreateUserForm();
+
+  return (
+    <View style={styles.container}>
+      <Text style={styles.heading}>Добавить нового пользователя</Text>
+      <TextInput
+        style={styles.input}
+        placeholder="Имя"
+        value={formData.name}
+        onChangeText={(text) => handleChange({ target: { name: "name", value: text } })}
+      />
+      <TextInput
+        style={styles.input}
+        placeholder="Email"
+        value={formData.email}
+        onChangeText={(text) => handleChange({ target: { name: "email", value: text } })}
+      />
+      <TextInput
+        style={styles.input}
+        placeholder="Пароль"
+        secureTextEntry
+        value={formData.password}
+        onChangeText={(text) => handleChange({ target: { name: "password", value: text } })}
+      />
+      <Picker
+        selectedValue={formData.role}
+        style={styles.input}
+        onValueChange={(itemValue) =>
+          handleChange({ target: { name: "role", value: itemValue } })
+        }
+      >
+        <Picker.Item label="Студент" value="student" />
+        <Picker.Item label="Компания" value="company" />
+        <Picker.Item label="Центр карьеры" value="career_center" />
+        <Picker.Item label="Админ" value="admin" />
+      </Picker>
+      <Button title="Добавить пользователя" onPress={handleSubmit} color="#007BFF" />
+    </View>
+  );
+};
+
+const styles = StyleSheet.create({
+  container: {
+    flex: 1,
+    justifyContent: "center",
+    padding: 20,
+    backgroundColor: "white",
+  },
+  heading: {
+    fontSize: 24,
+    fontWeight: "bold",
+    marginBottom: 20,
+    textAlign: "center",
+  },
+  input: {
+    height: 50,
+    borderColor: "#ccc",
+    borderWidth: 1,
+    marginBottom: 15,
+    paddingLeft: 10,
+    fontSize: 16,
+    borderRadius: 5,
+  },
+});
+
+export default CreateUser;
+
+
+C:\Users\ARMAGEDDON\Documents\testMob\my-new-app\src\pages\auth\login\login.tsx
+
+import React from "react";
+import { View, TextInput, Button, Text, StyleSheet, Alert } from "react-native";
+import { useLoginForm } from "../../../hooks/auth/useLoginForm";
+
+const Login = () => {
+  const { email, password, setEmail, setPassword, handleLogin } = useLoginForm();
+
+  const handleSubmit = async () => {
+    try {
+      await handleLogin();
+    } catch (error) {
+      Alert.alert("Ошибка", "Неправильный логин или пароль");
+    }
+  };
+
+  return (
+    <View style={styles.container}>
+      <View style={styles.formContainer}>
+        <Text style={styles.heading}>Вход</Text>
+        <TextInput
+          style={styles.input}
+          placeholder="Email"
+          value={email}
+          onChangeText={setEmail}
+          keyboardType="email-address"
+          required
+        />
+        <TextInput
+          style={styles.input}
+          placeholder="Пароль"
+          value={password}
+          onChangeText={setPassword}
+          secureTextEntry
+          required
+        />
+        <Button title="Войти" onPress={handleSubmit} color="#007BFF" />
+      </View>
+    </View>
+  );
+};
+
+const styles = StyleSheet.create({
+  container: {
+    flex: 1,
+    justifyContent: "center",
+    alignItems: "center",
+    backgroundColor: "#f7f7f7",
+  },
+  formContainer: {
+    width: "80%",
+    padding: 20,
+    backgroundColor: "white",
+    borderRadius: 8,
+    shadowColor: "#000",
+    shadowOpacity: 0.1,
+    shadowRadius: 4,
+    shadowOffset: { width: 0, height: 2 },
+  },
+  heading: {
+    fontSize: 24,
+    fontWeight: "bold",
+    marginBottom: 20,
+    textAlign: "center",
+  },
+  input: {
+    height: 50,
+    borderColor: "#ccc",
+    borderWidth: 1,
+    marginBottom: 15,
+    paddingLeft: 10,
+    fontSize: 16,
+    borderRadius: 5,
+  },
+});
+
+export default Login;
+
+C:\Users\ARMAGEDDON\Documents\testMob\my-new-app\src\pages\dashboard\dashboard\dashboard.tsx
+
+import React from "react";
+import { View, Text, StyleSheet, TouchableOpacity } from "react-native";
+import { useCurrentUser } from "../../../hooks/useCurrentUser";
+
+const Dashboard = () => {
+  const { user } = useCurrentUser();
+
+  return (
+    <View style={styles.container}>
+      <Text style={styles.heading}>Личный кабинет</Text>
+      {user && <Text style={styles.welcomeText}>Добро пожаловать, {user.name}!</Text>}
+
+      <View style={styles.nav}>
+        {["student", "career_center", "admin"].includes(user?.role || "") && (
+          <TouchableOpacity style={styles.link} onPress={() => { /* Navigate to notifications */ }}>
+            <Text style={styles.linkText}>Оповещении</Text>
+          </TouchableOpacity>
+        )}
+
+        {user?.role === "student" && (
+          <TouchableOpacity style={styles.link} onPress={() => { /* Navigate to myResume */ }}>
+            <Text style={styles.linkText}>Мое резюме</Text>
+          </TouchableOpacity>
+        )}
+
+        {user?.role === "admin" && (
+          <TouchableOpacity style={styles.link} onPress={() => { /* Navigate to newUser */ }}>
+            <Text style={styles.linkText}>Новый пользователь</Text>
+          </TouchableOpacity>
+        )}
+
+        {["career_center", "company"].includes(user?.role || "") && (
+          <TouchableOpacity style={styles.link} onPress={() => { /* Navigate to resumes */ }}>
+            <Text style={styles.linkText}>Резюме студентов</Text>
+          </TouchableOpacity>
+        )}
+
+        <TouchableOpacity style={styles.link} onPress={() => { /* Navigate to vacancies */ }}>
+          <Text style={styles.linkText}>Вакансии</Text>
+        </TouchableOpacity>
+        
+        <TouchableOpacity style={styles.link} onPress={() => { /* Navigate to settings */ }}>
+          <Text style={styles.linkText}>Настройки</Text>
+        </TouchableOpacity>
+      </View>
+    </View>
+  );
+};
+
+const styles = StyleSheet.create({
+  container: {
+    flex: 1,
+    justifyContent: "center",
+    padding: 20,
+    backgroundColor: "white",
+  },
+  heading: {
+    fontSize: 24,
+    fontWeight: "bold",
+    textAlign: "center",
+    marginBottom: 20,
+  },
+  welcomeText: {
+    fontSize: 18,
+    textAlign: "center",
+    marginBottom: 20,
+  },
+  nav: {
+    marginTop: 20,
+  },
+  link: {
+    marginBottom: 15,
+    padding: 10,
+  },
+  linkText: {
+    fontSize: 18,
+    color: "#007BFF",
+  },
+});
+
+export default Dashboard;
+
+C:\Users\ARMAGEDDON\Documents\testMob\my-new-app\src\pages\home\home\home.tsx
+
+import React from "react";
+import { View, Text, StyleSheet, TouchableOpacity } from "react-native";
+
+const Home = ({ navigation }) => {
+  return (
+    <View style={styles.container}>
+      <Text style={styles.welcomeText}>
+        Добро пожаловать в Job Portal.
+      </Text>
+      <TouchableOpacity onPress={() => navigation.navigate("Dashboard")}>
+        <Text style={styles.link}>Перейти в личный кабинет</Text>
+      </TouchableOpacity>
+    </View>
+  );
+};
+
+const styles = StyleSheet.create({
+  container: {
+    flex: 1,
+    justifyContent: "center",
+    alignItems: "center",
+    backgroundColor: "#f7f7f7",
+  },
+  welcomeText: {
+    fontSize: 24,
+    fontWeight: "bold",
+    marginBottom: 20,
+    textAlign: "center",
+  },
+  link: {
+    fontSize: 18,
+    color: "#007BFF",
+  },
+});
+
+export default Home;
+
+C:\Users\ARMAGEDDON\Documents\testMob\my-new-app\src\pages\notification\details\NotificationDetailsPage.tsx
+
+import React from "react";
+import { View, Text, Button, StyleSheet, Alert } from "react-native";
+import { useNotificationDetails } from "../../../hooks/notification/useNotificationDetails";
+
+const NotificationDetailsPage = () => {
+  const { notification, role, handleDelete, handleEdit } = useNotificationDetails();
+
+  if (!notification) {
+    return <Text style={styles.message}>Оповещение не найдено</Text>;
+  }
+
+  return (
+    <View style={styles.container}>
+      <Text style={styles.title}>{notification.title}</Text>
+      <Text style={styles.date}>
+        Создано: {new Date(notification.created_at || "").toLocaleString()}
+      </Text>
+      <Text style={styles.content}>{notification.content}</Text>
+
+      {role === "career_center" && (
+        <View style={styles.buttonsContainer}>
+          <Button
+            title="Редактировать"
+            onPress={handleEdit}
+            color="#007BFF"
+          />
+          <Button
+            title="Удалить"
+            onPress={() => {
+              Alert.alert(
+                "Подтверждение",
+                "Вы уверены, что хотите удалить это оповещение?",
+                [
+                  { text: "Отмена" },
+                  { text: "Удалить", onPress: handleDelete },
+                ]
+              );
+            }}
+            color="#FF0000"
+          />
+        </View>
+      )}
+    </View>
+  );
+};
+
+const styles = StyleSheet.create({
+  container: {
+    flex: 1,
+    padding: 20,
+    backgroundColor: "white",
+  },
+  title: {
+    fontSize: 24,
+    fontWeight: "bold",
+    marginBottom: 10,
+  },
+  date: {
+    fontSize: 14,
+    color: "#6B6B6B",
+    marginBottom: 20,
+  },
+  content: {
+    fontSize: 16,
+    marginBottom: 20,
+  },
+  message: {
+    fontSize: 16,
+    textAlign: "center",
+    marginTop: 20,
+  },
+  buttonsContainer: {
+    marginTop: 30,
+    flexDirection: "row",
+    justifyContent: "space-between",
+  },
+});
+
+export default NotificationDetailsPage;
+
+C:\Users\ARMAGEDDON\Documents\testMob\my-new-app\src\pages\notification\form\NotificationFormPage.tsx
+import React from "react";
+import { View, Text, TextInput, Button, StyleSheet, Image, Alert } from "react-native";
+import { useNotification } from "../../../hooks/notification/useNotification";
+
+const NotificationFormPage = ({ navigation }) => {
+  const { id } = useParams(); // Для React Navigation понадобится другой способ получения параметров
+  const { form, handleChange, handleFileChange, handleSubmit, isEdit, isLoading } = useNotification(id);
+
+  const onSubmit = async () => {
+    try {
+      await handleSubmit();
+      navigation.navigate("Notifications"); // Переход к списку уведомлений
+    } catch (err) {
+      Alert.alert("Ошибка", "Не удалось создать/сохранить оповещение");
+    }
+  };
+
+  return (
+    <View style={styles.container}>
+      <Text style={styles.heading}>{isEdit ? "Редактировать оповещение" : "Создать оповещение"}</Text>
+      
+      {isLoading ? (
+        <Text>Загрузка...</Text>
+      ) : (
+        <View>
+          <TextInput
+            style={styles.input}
+            name="title"
+            value={form.title}
+            onChangeText={(text) => handleChange({ target: { name: "title", value: text } })}
+            placeholder="Заголовок"
+            required
+          />
+          <TextInput
+            style={styles.textarea}
+            name="content"
+            value={form.content}
+            onChangeText={(text) => handleChange({ target: { name: "content", value: text } })}
+            placeholder="Сообщение"
+            multiline
+            numberOfLines={5}
+            required
+          />
+          <Button title="Выбрать изображение" onPress={handleFileChange} />
+          {form.imageUrl && <Image source={{ uri: form.imageUrl }} style={styles.image} />}
+          <Button title={isEdit ? "Сохранить" : "Создать"} onPress={onSubmit} color="#007BFF" />
+        </View>
+      )}
+    </View>
+  );
+};
+
+const styles = StyleSheet.create({
+  container: {
+    flex: 1,
+    padding: 20,
+    backgroundColor: "white",
+  },
+  heading: {
+    fontSize: 24,
+    fontWeight: "bold",
+    marginBottom: 20,
+    textAlign: "center",
+  },
+  input: {
+    height: 50,
+    borderColor: "#ccc",
+    borderWidth: 1,
+    marginBottom: 15,
+    paddingLeft: 10,
+    fontSize: 16,
+    borderRadius: 5,
+  },
+  textarea: {
+    height: 100,
+    borderColor: "#ccc",
+    borderWidth: 1,
+    marginBottom: 15,
+    paddingLeft: 10,
+    fontSize: 16,
+    borderRadius: 5,
+    textAlignVertical: "top", // Для текста в верхней части
+  },
+  image: {
+    maxWidth: 200,
+    marginTop: 15,
+  },
+});
+
+export default NotificationFormPage;
+
+C:\Users\ARMAGEDDON\Documents\testMob\my-new-app\src\pages\notification\list\NotificationListPage.tsx
+
+import React from "react";
+import { View, Text, StyleSheet, Image, FlatList, TouchableOpacity, ActivityIndicator, Alert } from "react-native";
+import { useCurrentUser } from "../../../hooks/useCurrentUser";
+import { useNotifications } from "../../../hooks/notification/useNotifications";
+
+const BASE_URL = "http://localhost:3000";
+
+const NotificationListPage = ({ navigation }) => {
+  const { user } = useCurrentUser();
+  const { notifications, loading } = useNotifications();
+
+  if (loading) return <ActivityIndicator style={styles.loader} size="large" color="#0000ff" />;
+
+  const handleNavigateToDetails = (id) => {
+    navigation.navigate("NotificationDetails", { id });
+  };
+
+  const handleCreateNotification = () => {
+    if (user?.role === "career_center") {
+      navigation.navigate("NotificationForm");
+    } else {
+      Alert.alert("Доступ запрещен", "Вы не имеете прав для создания оповещений.");
+    }
+  };
+
+  const renderItem = ({ item }) => (
+    <View style={styles.notificationCard}>
+      {item.imageUrl ? (
+        <View style={styles.imageContainer}>
+          <Image
+            source={{ uri: `${BASE_URL}${item.imageUrl}` }}
+            style={styles.image}
+          />
+          <View style={styles.overlay} />
+          <View style={styles.textOverlay}>
+            <TouchableOpacity onPress={() => handleNavigateToDetails(item.id)}>
+              <Text style={styles.notificationTitle}>{item.title}</Text>
+            </TouchableOpacity>
+            <Text style={styles.notificationDate}>
+              {new Date(item.created_at || "").toLocaleString()}
+            </Text>
+          </View>
+        </View>
+      ) : (
+        <View style={styles.textContainer}>
+          <TouchableOpacity onPress={() => handleNavigateToDetails(item.id)}>
+            <Text style={styles.notificationTitle}>{item.title}</Text>
+          </TouchableOpacity>
+          <Text style={styles.notificationDate}>
+            {new Date(item.created_at || "").toLocaleString()}
+          </Text>
+        </View>
+      )}
+      <Text style={styles.contentPreview}>
+        {item.content.slice(0, 100)}...
+      </Text>
+    </View>
+  );
+
+  return (
+    <View style={styles.container}>
+      <View style={styles.header}>
+        <Text style={styles.headerText}>Оповещения</Text>
+        {user?.role === "career_center" && (
+          <TouchableOpacity style={styles.createButton} onPress={handleCreateNotification}>
+            <Text style={styles.createButtonText}>Создать оповещение</Text>
+          </TouchableOpacity>
+        )}
+      </View>
+      <FlatList
+        data={notifications}
+        renderItem={renderItem}
+        keyExtractor={(item) => item.id.toString()}
+      />
+    </View>
+  );
+};
+
+const styles = StyleSheet.create({
+  container: {
+    flex: 1,
+    padding: 20,
+    backgroundColor: "white",
+  },
+  header: {
+    flexDirection: "row",
+    justifyContent: "space-between",
+    alignItems: "center",
+    marginBottom: 20,
+  },
+  headerText: {
+    fontSize: 24,
+    fontWeight: "bold",
+  },
+  createButton: {
+    backgroundColor: "#007BFF",
+    paddingVertical: 10,
+    paddingHorizontal: 20,
+    borderRadius: 5,
+  },
+  createButtonText: {
+    color: "white",
+    fontSize: 16,
+  },
+  notificationCard: {
+    marginBottom: 20,
+    borderRadius: 8,
+    shadowColor: "#000",
+    shadowOpacity: 0.1,
+    shadowRadius: 4,
+    shadowOffset: { width: 0, height: 2 },
+    backgroundColor: "white",
+  },
+  imageContainer: {
+    position: "relative",
+  },
+  image: {
+    width: "100%",
+    height: 200,
+    borderTopLeftRadius: 8,
+    borderTopRightRadius: 8,
+  },
+  overlay: {
+    position: "absolute",
+    top: 0,
+    left: 0,
+    right: 0,
+    bottom: 0,
+    backgroundColor: "rgba(0, 0, 0, 0.5)",
+    borderTopLeftRadius: 8,
+    borderTopRightRadius: 8,
+  },
+  textOverlay: {
+    position: "absolute",
+    bottom: 10,
+    left: 10,
+  },
+  notificationTitle: {
+    fontSize: 18,
+    fontWeight: "bold",
+    color: "white",
+  },
+  notificationDate: {
+    fontSize: 12,
+    color: "white",
+  },
+  textContainer: {
+    padding: 10,
+  },
+  contentPreview: {
+    fontSize: 14,
+    color: "#555",
+    padding: 10,
+  },
+  loader: {
+    flex: 1,
+    justifyContent: "center",
+    alignItems: "center",
+  },
+});
+
+export default NotificationListPage;
+
+C:\Users\ARMAGEDDON\Documents\testMob\my-new-app\src\pages\resume\details\ResumeDetailsPage.tsximport React from "react";
+import { View, Text, StyleSheet, FlatList, ActivityIndicator } from "react-native";
+import { useResumeDetails } from "../../../hooks/resume/useResumeDetails";
+
+const ResumeDetailsPage = ({ route }) => {
+  const { id } = route.params; // Получаем ID из маршрута
+  const { resume, loading } = useResumeDetails(id);
+
+  if (loading) return <ActivityIndicator style={styles.loader} size="large" color="#0000ff" />;
+  if (!resume) return <Text style={styles.errorText}>Резюме не найдено.</Text>;
+
+  const renderList = (data, title) => (
+    <View style={styles.section}>
+      <Text style={styles.sectionTitle}>{title}</Text>
+      {data && data.length > 0 ? (
+        <FlatList
+          data={data}
+          keyExtractor={(item, index) => index.toString()}
+          renderItem={({ item }) => (
+            <Text style={styles.listItem}>
+              {item.name || item.position} — {item.level || item.company || item.proficiency}
+            </Text>
+          )}
+        />
+      ) : (
+        <Text>Нет данных</Text>
+      )}
+    </View>
+  );
+
+  return (
+    <View style={styles.container}>
+      <Text style={styles.header}>
+        Резюме пользователя: {resume.User?.name || "Нет имени"}
+      </Text>
+
+      {renderList(resume.skills, "Навыки")}
+      {renderList(resume.experience, "Опыт работы")}
+      {renderList(resume.languages, "Языки")}
+
+      {resume.additionalInfo && (
+        <View style={styles.section}>
+          <Text style={styles.sectionTitle}>Дополнительная информация</Text>
+          <Text>{resume.additionalInfo || "Нет информации"}</Text>
+        </View>
+      )}
+    </View>
+  );
+};
+
+const styles = StyleSheet.create({
+  container: {
+    flex: 1,
+    padding: 20,
+    backgroundColor: "white",
+  },
+  header: {
+    fontSize: 24,
+    fontWeight: "bold",
+    marginBottom: 20,
+    textAlign: "center",
+  },
+  section: {
+    marginBottom: 20,
+  },
+  sectionTitle: {
+    fontSize: 18,
+    fontWeight: "600",
+    marginBottom: 10,
+  },
+  listItem: {
+    fontSize: 16,
+    marginBottom: 5,
+  },
+  errorText: {
+    fontSize: 18,
+    color: "red",
+    textAlign: "center",
+    marginTop: 20,
+  },
+  loader: {
+    flex: 1,
+    justifyContent: "center",
+    alignItems: "center",
+  },
+});
+
+export default ResumeDetailsPage;
+
+C:\Users\ARMAGEDDON\Documents\testMob\my-new-app\src\pages\resume\form\ResumeListPage.tsximport React, { useState, useEffect } from "react";
+import { View, Text, TextInput, Button, FlatList, ActivityIndicator, StyleSheet } from "react-native";
+import { useResumes } from "../../../hooks/resume/useResumes";
+
+const ResumeListPage = ({ navigation }) => {
+  const { resumes, loading } = useResumes();
+  const [search, setSearch] = useState("");
+  const [filtered, setFiltered] = useState([]);
+
+  useEffect(() => {
+    const q = search.toLowerCase();
+    setFiltered(
+      resumes.filter(
+        (r) =>
+          (r.User?.name?.toLowerCase().includes(q) ?? false) ||
+          (r.skills?.some((s) => s?.name?.toLowerCase().includes(q)) ?? false) ||
+          (r.languages?.some((l) => l?.name?.toLowerCase().includes(q)) ?? false)
+      )
+    );
+  }, [search, resumes]);
+
+  if (loading) return <ActivityIndicator style={styles.loader} size="large" color="#0000ff" />;
+
+  return (
+    <View style={styles.container}>
+      <Text style={styles.header}>Все резюме</Text>
+      <TextInput
+        style={styles.input}
+        placeholder="Поиск по имени, навыкам или языкам..."
+        value={search}
+        onChangeText={setSearch}
+      />
+
+      <FlatList
+        data={filtered}
+        keyExtractor={(item) => item.id.toString()}
+        renderItem={({ item }) => (
+          <View style={styles.card}>
+            <Text style={styles.name}>{item.User?.name ?? "Без имени"}</Text>
+            <Text>
+              <Text style={styles.bold}>Навыки: </Text>
+              {Array.isArray(item.skills) && item.skills.length > 0
+                ? item.skills.map((s) => s?.name ?? "Без названия").join(", ")
+                : "Нет"}
+            </Text>
+
+            <Text>
+              <Text style={styles.bold}>Языки: </Text>
+              {Array.isArray(item.languages) && item.languages.length > 0
+                ? item.languages.map((l) => l?.name ?? "Без названия").join(", ")
+                : "Нет"}
+            </Text>
+
+            <Button
+              title="Подробнее"
+              onPress={() => navigation.navigate("ResumeDetails", { id: item.id })}
+            />
+          </View>
+        )}
+      />
+    </View>
+  );
+};
+
+const styles = StyleSheet.create({
+  container: {
+    flex: 1,
+    padding: 20,
+    backgroundColor: "white",
+  },
+  header: {
+    fontSize: 24,
+    fontWeight: "bold",
+    marginBottom: 10,
+  },
+  input: {
+    borderColor: "#ccc",
+    borderWidth: 1,
+    padding: 10,
+    marginBottom: 20,
+    borderRadius: 5,
+  },
+  card: {
+    marginBottom: 20,
+    padding: 10,
+    backgroundColor: "#fff",
+    borderRadius: 8,
+    borderWidth: 1,
+    borderColor: "#ccc",
+  },
+  name: {
+    fontSize: 18,
+    fontWeight: "bold",
+    marginBottom: 10,
+  },
+  bold: {
+    fontWeight: "bold",
+  },
+  loader: {
+    flex: 1,
+    justifyContent: "center",
+    alignItems: "center",
+  },
+});
+
+export default ResumeListPage;
+
+C:\Users\ARMAGEDDON\Documents\testMob\my-new-app\src\pages\resume\list\resumePage.tsx
+
+import React, { useState } from "react";
+import { View, Text, TextInput, Button, FlatList, StyleSheet, TouchableOpacity } from "react-native";
+import { useResume } from "../../../hooks/resume/useResume";
+
+const ResumePage = () => {
+  const {
+    resume,
+    formData,
+    isEditing,
+    setIsEditing,
+    handleChange,
+    addItem,
+    removeItem,
+    saveResume,
+    loading,
+  } = useResume();
+
+  if (loading) {
+    return <Text style={styles.loader}>Загрузка...</Text>;
+  }
+
+  return (
+    <View style={styles.container}>
+      <Text style={styles.header}>Личный кабинет</Text>
+      <Button
+        title={isEditing ? "Просмотр" : "Редактировать"}
+        onPress={() => setIsEditing(!isEditing)}
+      />
+
+      {isEditing ? (
+        <View>
+          <Text style={styles.sectionHeader}>Опыт работы</Text>
+          <FlatList
+            data={formData?.experience}
+            renderItem={({ item, index }) => (
+              <View style={styles.inputContainer}>
+                <TextInput
+                  style={styles.input}
+                  placeholder="Компания"
+                  value={item.company}
+                  onChangeText={(text) => handleChange({ target: { name: "company", value: text } }, "experience", index)}
+                />
+                <TextInput
+                  style={styles.input}
+                  placeholder="Должность"
+                  value={item.position}
+                  onChangeText={(text) => handleChange({ target: { name: "position", value: text } }, "experience", index)}
+                />
+                <TextInput
+                  style={styles.input}
+                  placeholder="Длительность"
+                  value={item.duration}
+                  onChangeText={(text) => handleChange({ target: { name: "duration", value: text } }, "experience", index)}
+                />
+                <Button title="Удалить" onPress={() => removeItem("experience", index)} />
+              </View>
+            )}
+            keyExtractor={(item, index) => index.toString()}
+          />
+          <Button title="Добавить опыт" onPress={() => addItem("experience", { company: "", position: "", duration: "" })} />
+
+          <Text style={styles.sectionHeader}>Навыки</Text>
+          <FlatList
+            data={formData?.skills}
+            renderItem={({ item, index }) => (
+              <View style={styles.inputContainer}>
+                <TextInput
+                  style={styles.input}
+                  placeholder="Название"
+                  value={item.name}
+                  onChangeText={(text) => handleChange({ target: { name: "name", value: text } }, "skills", index)}
+                />
+                <TextInput
+                  style={styles.input}
+                  placeholder="Уровень"
+                  value={item.level}
+                  onChangeText={(text) => handleChange({ target: { name: "level", value: text } }, "skills", index)}
+                />
+                <Button title="Удалить" onPress={() => removeItem("skills", index)} />
+              </View>
+            )}
+            keyExtractor={(item, index) => index.toString()}
+          />
+          <Button title="Добавить навык" onPress={() => addItem("skills", { name: "", level: "" })} />
+
+          <Text style={styles.sectionHeader}>Языки</Text>
+          <FlatList
+            data={formData?.languages}
+            renderItem={({ item, index }) => (
+              <View style={styles.inputContainer}>
+                <TextInput
+                  style={styles.input}
+                  placeholder="Язык"
+                  value={item.name}
+                  onChangeText={(text) => handleChange({ target: { name: "name", value: text } }, "languages", index)}
+                />
+                <TextInput
+                  style={styles.input}
+                  placeholder="Уровень"
+                  value={item.proficiency}
+                  onChangeText={(text) => handleChange({ target: { name: "proficiency", value: text } }, "languages", index)}
+                />
+                <Button title="Удалить" onPress={() => removeItem("languages", index)} />
+              </View>
+            )}
+            keyExtractor={(item, index) => index.toString()}
+          />
+          <Button title="Добавить язык" onPress={() => addItem("languages", { name: "", proficiency: "" })} />
+
+          <Text style={styles.sectionHeader}>Дополнительная информация</Text>
+          <TextInput
+            style={styles.textarea}
+            multiline
+            value={formData?.additionalInfo}
+            onChangeText={(text) => handleChange({ target: { name: "additionalInfo", value: text } })}
+          />
+
+          <Button title="Сохранить" onPress={saveResume} />
+        </View>
+      ) : (
+        <View>
+          <Text style={styles.sectionHeader}>Опыт работы</Text>
+          {resume?.experience?.length ? (
+            resume.experience.map((exp, index) => (
+              <View key={index} style={styles.item}>
+                <Text><Text style={styles.bold}>Компания:</Text> {exp.company}</Text>
+                <Text><Text style={styles.bold}>Должность:</Text> {exp.position}</Text>
+                <Text><Text style={styles.bold}>Длительность:</Text> {exp.duration}</Text>
+              </View>
+            ))
+          ) : (
+            <Text>Нет данных</Text>
+          )}
+
+          <Text style={styles.sectionHeader}>Навыки</Text>
+          {resume?.skills?.length ? (
+            resume.skills.map((skill, index) => (
+              <Text key={index}>
+                <Text style={styles.bold}>{skill.name}</Text>: {skill.level}
+              </Text>
+            ))
+          ) : (
+            <Text>Нет данных</Text>
+          )}
+
+          <Text style={styles.sectionHeader}>Языки</Text>
+          {resume?.languages?.length ? (
+            resume.languages.map((lang, index) => (
+              <Text key={index}>
+                <Text style={styles.bold}>{lang.name}</Text>: {lang.proficiency}
+              </Text>
+            ))
+          ) : (
+            <Text>Нет данных</Text>
+          )}
+
+          <Text style={styles.sectionHeader}>Дополнительная информация</Text>
+          <Text>{resume?.additionalInfo?.trim() ? resume.additionalInfo : "Нет данных"}</Text>
+        </View>
+      )}
+    </View>
+  );
+};
+
+const styles = StyleSheet.create({
+  container: {
+    flex: 1,
+    padding: 16,
+    backgroundColor: "white",
+  },
+  header: {
+    fontSize: 24,
+    fontWeight: "bold",
+    marginBottom: 16,
+  },
+  sectionHeader: {
+    fontSize: 18,
+    fontWeight: "bold",
+    marginBottom: 8,
+    marginTop: 16,
+  },
+  inputContainer: {
+    marginBottom: 16,
+  },
+  input: {
+    borderWidth: 1,
+    padding: 8,
+    marginBottom: 8,
+    borderRadius: 5,
+  },
+  textarea: {
+    borderWidth: 1,
+    padding: 8,
+    borderRadius: 5,
+    height: 100,
+  },
+  bold: {
+    fontWeight: "bold",
+  },
+  item: {
+    marginBottom: 8,
+  },
+  loader: {
+    textAlign: "center",
+    marginTop: 20,
+  },
+});
+
+export default ResumePage;
+
+C:\Users\ARMAGEDDON\Documents\testMob\my-new-app\src\pages\vacancy\details\VacancyDetailsPage.tsximport React, { useEffect, useState } from "react";
+import { View, Text, Button, Alert, StyleSheet } from "react-native";
+import { useRoute, useNavigation } from "@react-navigation/native"; // Используем React Navigation для работы с роутингом в React Native
+import { useVacancyDetails } from "../../../hooks/vacancy/useVacancyDetails";
+import { useCurrentUserId } from "../../../hooks/useCurrentUserId";
+import { deleteVacancy } from "../../../services/vacancyService";
+import { toast } from "react-toastify"; // Toast, возможно, придется заменить на React Native аналог
+
+const VacancyDetailsPage = () => {
+  const route = useRoute();
+  const navigation = useNavigation();
+  const { id } = route.params; // В React Native для работы с параметрами роутинга используем useRoute
+  const currentUserId = useCurrentUserId();
+  const { vacancy, isLoading } = useVacancyDetails(id);
+
+  const handleDelete = async () => {
+    if (!id) return;
+    Alert.alert("Подтверждение", "Вы уверены, что хотите удалить вакансию?", [
+      { text: "Отмена", style: "cancel" },
+      {
+        text: "Удалить",
+        onPress: async () => {
+          try {
+            await deleteVacancy(id);
+            toast.success("Вакансия удалена");
+            navigation.navigate("Vacancies"); // Перенаправление в список вакансий
+          } catch (error) {
+            toast.error("Ошибка при удалении вакансии");
+          }
+        },
+      },
+    ]);
+  };
+
+  const handleEdit = () => {
+    navigation.navigate("EditVacancy", { id }); // Переход на страницу редактирования вакансии
+  };
+
+  if (isLoading) return <Text>Загрузка...</Text>;
+  if (!vacancy) return <Text>Вакансия не найдена</Text>;
+
+  return (
+    <View style={styles.container}>
+      <Text style={styles.title}>{vacancy.title}</Text>
+      <Text><Text style={styles.bold}>Описание:</Text> {vacancy.description}</Text>
+      <Text><Text style={styles.bold}>Требования:</Text> {vacancy.requirements.join(", ") || "Не указаны"}</Text>
+      <Text><Text style={styles.bold}>Локация:</Text> {vacancy.location}</Text>
+      <Text><Text style={styles.bold}>Зарплата:</Text> {vacancy.salary}</Text>
+
+      {vacancy.userId === currentUserId && (
+        <View style={styles.buttonContainer}>
+          <Button title="Редактировать" onPress={handleEdit} color="#007bff" />
+          <Button title="Удалить" onPress={handleDelete} color="#dc3545" />
+        </View>
+      )}
+    </View>
+  );
+};
+
+const styles = StyleSheet.create({
+  container: {
+    padding: 20,
+  },
+  title: {
+    fontSize: 24,
+    fontWeight: "bold",
+    marginBottom: 10,
+  },
+  bold: {
+    fontWeight: "bold",
+  },
+  buttonContainer: {
+    marginTop: 20,
+    flexDirection: "row",
+    justifyContent: "space-between",
+  },
+});
+
+export default VacancyDetailsPage;
+
+C:\Users\ARMAGEDDON\Documents\testMob\my-new-app\src\pages\vacancy\form\VacancyFormPage.tsx
+
+import React, { useState, useEffect } from "react";
+import { View, Text, TextInput, Button, StyleSheet, Alert } from "react-native";
+import { useNavigation, useRoute } from "@react-navigation/native"; // React Navigation
+import { useVacancy } from "../../../hooks/vacancy/useVacancy"; // Кастомный хук для работы с вакансией
+
+const VacancyFormPage = () => {
+  const route = useRoute();
+  const navigation = useNavigation();
+  const { id } = route.params || {}; // Получаем параметр id из маршрута
+
+  const {
+    form,
+    handleChange,
+    handleRequirementsChange,
+    requirementsInput,
+    handleSubmit,
+    isEdit,
+    isLoading,
+  } = useVacancy(id);
+
+  const onSubmit = async () => {
+    await handleSubmit();
+    navigation.navigate("Vacancies"); // Переход к списку вакансий
+  };
+
+  if (isLoading) return <Text>Загрузка...</Text>;
+
+  return (
+    <View style={styles.container}>
+      <Text style={styles.title}>
+        {isEdit ? "Редактировать вакансию" : "Создать вакансию"}
+      </Text>
+      
+      <TextInput
+        style={styles.input}
+        placeholder="Название"
+        value={form.title}
+        onChangeText={(text) => handleChange("title", text)}
+      />
+      
+      <TextInput
+        style={[styles.input, styles.textarea]}
+        placeholder="Описание"
+        value={form.description}
+        onChangeText={(text) => handleChange("description", text)}
+        multiline
+      />
+      
+      <TextInput
+        style={styles.input}
+        placeholder="Требования (через запятую)"
+        value={requirementsInput}
+        onChangeText={handleRequirementsChange}
+      />
+      
+      <TextInput
+        style={styles.input}
+        placeholder="Локация"
+        value={form.location}
+        onChangeText={(text) => handleChange("location", text)}
+      />
+      
+      <TextInput
+        style={styles.input}
+        placeholder="Зарплата"
+        value={form.salary}
+        onChangeText={(text) => handleChange("salary", text)}
+      />
+      
+      <Button title={isEdit ? "Сохранить" : "Создать"} onPress={onSubmit} />
+    </View>
+  );
+};
+
+const styles = StyleSheet.create({
+  container: {
+    padding: 16,
+    flex: 1,
+  },
+  title: {
+    fontSize: 24,
+    fontWeight: "bold",
+    marginBottom: 12,
+  },
+  input: {
+    borderWidth: 1,
+    borderColor: "#ccc",
+    padding: 8,
+    marginBottom: 12,
+    borderRadius: 4,
+  },
+  textarea: {
+    height: 100,
+  },
+});
+
+export default VacancyFormPage;
+
+C:\Users\ARMAGEDDON\Documents\testMob\my-new-app\src\pages\vacancy\list\VacancyListPage.tsx
+
+import React, { useState, useEffect } from "react";
+import { View, Text, TextInput, Button, FlatList, TouchableOpacity, StyleSheet } from "react-native";
+import { useUserRole } from "../../../hooks/useUserRole"; // Кастомный хук для роли пользователя
+import { useVacancies } from "../../../hooks/vacancy/useVacancies"; // Кастомный хук для вакансий
+
+const VacancyListPage = () => {
+  const [search, setSearch] = useState("");
+  const [showMyVacancies, setShowMyVacancies] = useState(true);
+  const role = useUserRole();
+  const { vacancies, isLoading } = useVacancies(role, showMyVacancies);
+
+  const filteredVacancies = vacancies.filter((v) =>
+    v.title.toLowerCase().includes(search.toLowerCase()) ||
+    v.description.toLowerCase().includes(search.toLowerCase())
+  );
+
+  return (
+    <View style={styles.container}>
+      <View style={styles.header}>
+        <Text style={styles.title}>Вакансии</Text>
+        {role === "company" && (
+          <View style={styles.buttonsContainer}>
+            <TouchableOpacity style={styles.button} onPress={() => {/* navigate to create vacancy page */}}>
+              <Text style={styles.buttonText}>Создать вакансию</Text>
+            </TouchableOpacity>
+            <TouchableOpacity
+              style={[styles.button, styles.outlineButton]}
+              onPress={() => setShowMyVacancies(!showMyVacancies)}
+            >
+              <Text style={styles.buttonText}>
+                {showMyVacancies ? "Показать все вакансии" : "Показать мои вакансии"}
+              </Text>
+            </TouchableOpacity>
+          </View>
+        )}
+      </View>
+
+      <TextInput
+        style={styles.searchInput}
+        placeholder="Поиск по названию или описанию..."
+        value={search}
+        onChangeText={setSearch}
+      />
+
+      {isLoading ? (
+        <Text>Загрузка...</Text>
+      ) : filteredVacancies.length === 0 ? (
+        <Text>Вакансии не найдены</Text>
+      ) : (
+        <FlatList
+          data={filteredVacancies}
+          keyExtractor={(item) => item.id.toString()}
+          renderItem={({ item }) => (
+            <View style={styles.vacancyItem}>
+              <Text style={styles.vacancyTitle}>{item.title}</Text>
+              <Text style={styles.vacancyInfo}>
+                {item.location} — {item.salary}
+              </Text>
+              <Text style={styles.vacancyDescription}>{item.description.slice(0, 100)}...</Text>
+              <TouchableOpacity
+                style={styles.viewDetailsButton}
+                onPress={() => {/* navigate to vacancy details page */}}
+              >
+                <Text style={styles.viewDetailsButtonText}>Подробнее</Text>
+              </TouchableOpacity>
+            </View>
+          )}
+        />
+      )}
+    </View>
+  );
+};
+
+const styles = StyleSheet.create({
+  container: {
+    padding: 16,
+    flex: 1,
+  },
+  header: {
+    flexDirection: "row",
+    justifyContent: "space-between",
+    alignItems: "center",
+    marginBottom: 16,
+  },
+  title: {
+    fontSize: 24,
+    fontWeight: "bold",
+  },
+  buttonsContainer: {
+    flexDirection: "row",
+  },
+  button: {
+    backgroundColor: "#4CAF50",
+    padding: 10,
+    marginRight: 10,
+    borderRadius: 5,
+  },
+  outlineButton: {
+    backgroundColor: "transparent",
+    borderColor: "#4CAF50",
+    borderWidth: 1,
+  },
+  buttonText: {
+    color: "white",
+  },
+  searchInput: {
+    borderWidth: 1,
+    padding: 10,
+    marginBottom: 16,
+    borderRadius: 5,
+  },
+  vacancyItem: {
+    borderWidth: 1,
+    padding: 16,
+    marginBottom: 12,
+    borderRadius: 5,
+    backgroundColor: "#fff",
+  },
+  vacancyTitle: {
+    fontSize: 18,
+    fontWeight: "bold",
+  },
+  vacancyInfo: {
+    color: "gray",
+    fontSize: 14,
+  },
+  vacancyDescription: {
+    color: "gray",
+  },
+  viewDetailsButton: {
+    marginTop: 8,
+    backgroundColor: "#4CAF50",
+    padding: 10,
+    borderRadius: 5,
+  },
+  viewDetailsButtonText: {
+    color: "white",
+    textAlign: "center",
+  },
+});
+
+export default VacancyListPage;
+
+
+C:\Users\ARMAGEDDON\Documents\testMob\my-new-app\src\routes\Router.tsx
+
+import React from "react";
+import { NavigationContainer } from "@react-navigation/native";
+import { createStackNavigator } from "@react-navigation/stack";
+import Home from "../pages/home/home/home";
+import Login from "../pages/auth/login/login";
+import Dashboard from "../pages/dashboard/dashboard/dashboard";
+import CreateUser from "../pages/admin/createUser/createUser";
+import ResumePage from "../pages/resume/list/resumePage";
+import ResumeListPage from "../pages/resume/form/ResumeListPage";
+import ResumeDetailsPage from "../pages/resume/details/ResumeDetailsPage";
+import VacancyFormPage from "../pages/vacancy/form/VacancyFormPage";
+import VacancyDetailsPage from "../pages/vacancy/details/VacancyDetailsPage";
+import VacancyListPage from "../pages/vacancy/list/VacancyListPage";
+import NotificationListPage from "../pages/notification/list/NotificationListPage";
+import NotificationFormPage from "../pages/notification/form/NotificationFormPage";
+import NotificationDetailsPage from "../pages/notification/details/NotificationDetailsPage";
+import { useCurrentUser } from "../hooks/useCurrentUser";  // Assuming it's available in your app
+
+const Stack = createStackNavigator();
+
+const AppRouter = () => {
+  const { user } = useCurrentUser();  // Use context or hooks for user info
+
+  return (
+    <NavigationContainer>
+      <Stack.Navigator initialRouteName="Home">
+        {/* Unprotected routes */}
+        <Stack.Screen name="Home" component={Home} />
+        <Stack.Screen name="Login" component={Login} />
+
+        {/* Protected routes (using a simple check for role in the component) */}
+        {user && (
+          <>
+            <Stack.Screen name="Dashboard" component={Dashboard} />
+            <Stack.Screen name="VacancyList" component={VacancyListPage} />
+            <Stack.Screen name="VacancyDetails" component={VacancyDetailsPage} />
+            <Stack.Screen name="NotificationList" component={NotificationListPage} />
+            <Stack.Screen name="NotificationDetails" component={NotificationDetailsPage} />
+          </>
+        )}
+
+        {/* Admin only routes */}
+        {user?.role === "admin" && (
+          <Stack.Screen name="CreateUser" component={CreateUser} />
+        )}
+
+        {/* Student specific routes */}
+        {user?.role === "student" && (
+          <Stack.Screen name="MyResume" component={ResumePage} />
+        )}
+
+        {/* Company and Career Center routes */}
+        {(user?.role === "company" || user?.role === "career_center") && (
+          <>
+            <Stack.Screen name="ResumeList" component={ResumeListPage} />
+            <Stack.Screen name="ResumeDetails" component={ResumeDetailsPage} />
+          </>
+        )}
+
+        {/* Vacancy and Notification routes */}
+        {user?.role === "company" && (
+          <Stack.Screen name="VacancyForm" component={VacancyFormPage} />
+        )}
+        {user?.role === "career_center" && (
+          <Stack.Screen name="NotificationForm" component={NotificationFormPage} />
+        )}
+        
+        {/* Catch-all */}
+        <Stack.Screen name="NotFound" component={Home} />
+      </Stack.Navigator>
+    </NavigationContainer>
+  );
+};
+
+export default AppRouter;
+
+C:\Users\ARMAGEDDON\Documents\testMob\my-new-app\src\services\notificationService.ts
+
+import axios from "axios";
+import AsyncStorage from "@react-native-async-storage/async-storage";
+import { Notification } from "../types/notification";
+
+const API_URL = "http://localhost:3000/notifications";
+
+// Получаем заголовки с авторизацией
+const getAuthHeaders = async () => {
+  const token = await AsyncStorage.getItem("token");
+  if (!token) throw new Error("Вы не авторизованы");
+  return { Authorization: `Bearer ${token}` };
+};
+
+// Получить список оповещений
+export const getNotifications = async (): Promise<Notification[]> => {
+  const { data } = await axios.get(API_URL, {
+    headers: await getAuthHeaders(),
+  });
+  return data;
+};
+
+// Получить оповещение по ID
+export const getNotificationById = async (id: string): Promise<Notification> => {
+  const { data } = await axios.get(`${API_URL}/${id}`, {
+    headers: await getAuthHeaders(),
+  });
+  return data;
+};
+
+// Создать новое оповещение
+export const createNotification = async (formData: FormData): Promise<Notification> => {
+  const { data } = await axios.post(API_URL, formData, {
+    headers: {
+      ...(await getAuthHeaders()),
+      "Content-Type": "multipart/form-data",
+    },
+  });
+  return data;
+};
+
+// Обновить существующее оповещение
+export const updateNotification = async (id: string, formData: FormData): Promise<Notification> => {
+  const { data } = await axios.put(`${API_URL}/${id}`, formData, {
+    headers: {
+      ...(await getAuthHeaders()),
+      "Content-Type": "multipart/form-data",
+    },
+  });
+  return data;
+};
+
+// Удалить оповещение
+export const deleteNotification = async (id: string): Promise<void> => {
+  await axios.delete(`${API_URL}/${id}`, {
+    headers: await getAuthHeaders(),
+  });
+};
+
+
+C:\Users\ARMAGEDDON\Documents\testMob\my-new-app\src\services\resumeService.ts
+
+import axios from "axios";
+import AsyncStorage from "@react-native-async-storage/async-storage";
+import { Resume, ResumeWithUser, defaultResume } from "../types/resume";
+
+const API_URL = "http://localhost:3000/resumes";
+
+// Получение заголовков с авторизацией
+const getAuthHeaders = async () => {
+  const token = await AsyncStorage.getItem("token");
+  if (!token) throw new Error("Вы не авторизованы");
+  return { Authorization: `Bearer ${token}` };
+};
+
+// Получить свое резюме
+export const getResume = async (token: string | null): Promise<Resume> => {
+  if (!token) throw new Error("Вы не авторизованы");
+  try {
+    const { data } = await axios.get<Resume>(`${API_URL}/me`, {
+      headers: await getAuthHeaders(),
+    });
+    return data;
+  } catch (err: any) {
+    if (err.response?.status === 404) return defaultResume;
+    throw err;
+  }
+};
+
+// Обновить резюме
+export const updateResume = async (token: string | null, formData: Resume) => {
+  if (!token) throw new Error("Вы не авторизованы");
+  await axios.put(API_URL, formData, {
+    headers: await getAuthHeaders(),
+  });
+};
+
+// Получить все резюме для компаний/ЦК
+export const fetchResumes = async (token: string | null): Promise<ResumeWithUser[]> => {
+  if (!token) throw new Error("Вы не авторизованы");
+  const { data } = await axios.get<ResumeWithUser[]>(API_URL, {
+    headers: await getAuthHeaders(),
+  });
+  return data;
+};
+
+// Получить одно резюме для компаний/ЦК
+export const fetchResumeById = async (id: string, token: string | null): Promise<ResumeWithUser> => {
+  if (!token) throw new Error("Вы не авторизованы");
+  const { data } = await axios.get<ResumeWithUser>(`${API_URL}/${id}`, {
+    headers: await getAuthHeaders(),
+  });
+  return data;
+};
+
+
+C:\Users\ARMAGEDDON\Documents\testMob\my-new-app\src\services\vacancyService.ts
+import axios from "axios";
+import AsyncStorage from "@react-native-async-storage/async-storage";
+import { Vacancy } from "../types/vacancy";
+
+const API_URL = "http://localhost:3000/vacancies";
+
+// Получение заголовков с авторизацией
+const getAuthHeaders = async () => {
+  const token = await AsyncStorage.getItem("token");
+  if (!token) throw new Error("Вы не авторизованы");
+  return { Authorization: `Bearer ${token}` };
+};
+
+// Создание вакансии
+export const createVacancy = async (vacancy: Vacancy) => {
+  const { data } = await axios.post(API_URL, vacancy, {
+    headers: await getAuthHeaders(),
+  });
+  return data;
+};
+
+// Обновление вакансии
+export const updateVacancy = async (id: string, vacancy: Vacancy) => {
+  const { data } = await axios.put(`${API_URL}/${id}`, vacancy, {
+    headers: await getAuthHeaders(),
+  });
+  return data;
+};
+
+// Удаление вакансии
+export const deleteVacancy = async (id: string) => {
+  await axios.delete(`${API_URL}/${id}`, {
+    headers: await getAuthHeaders(),
+  });
+};
+
+// Получить вакансию по ID
+export const getVacancyById = async (id: string): Promise<Vacancy> => {
+  const { data } = await axios.get(`${API_URL}/${id}`, {
+    headers: await getAuthHeaders(),
+  });
+  return data;
+};
+
+// Получить все вакансии для пользователя
+export const getMyVacancies = async (): Promise<Vacancy[]> => {
+  const { data } = await axios.get(`${API_URL}/my`, {
+    headers: await getAuthHeaders(),
+  });
+  return data;
+};
+
+C:\Users\ARMAGEDDON\Documents\testMob\my-new-app\src\types\notification.ts
+export interface Notification {
+  id?: string;
+  title: string;
+  content: string;
+  created_at?: string;
+  updated_at?: string;
+  imageUrl?: string;
+}
+
+C:\Users\ARMAGEDDON\Documents\testMob\my-new-app\src\types\react-native-image-picker.d.ts
+declare module 'react-native-image-picker' {
+  export type Asset = {
+    uri: string;
+    type: string;
+    fileName: string;
+  };
+
+  export interface ImagePickerResponse {
+    assets?: Asset[];
+    errorCode?: string;
+    errorMessage?: string;
+  }
+
+  export interface ImagePickerOptions {
+    mediaType?: 'photo' | 'video';
+    quality?: number;
+    maxWidth?: number;
+    maxHeight?: number;
+    includeBase64?: boolean;
+    includeExtra?: boolean;
+  }
+
+  export function launchImageLibrary(
+    options: ImagePickerOptions,
+    callback: (response: ImagePickerResponse) => void
+  ): void;
+
+  export function launchCamera(
+    options: ImagePickerOptions,
+    callback: (response: ImagePickerResponse) => void
+  ): void;
+}
+
+C:\Users\ARMAGEDDON\Documents\testMob\my-new-app\src\types\resume.tsexport interface Experience {
+    company: string;
+    position: string;
+    duration: string;
+  }
+  
+  export interface Skill {
+    name: string;
+    level: string;
+  }
+  
+  export interface Language {
+    name: string;
+    proficiency: string;
+  }
+  
+  // «базовое» резюме студента (свой `/me`)
+  export interface Resume {
+    experience: Experience[];
+    skills: Skill[];
+    languages: Language[];
+    additionalInfo: string;
+  }
+  
+  // Резюме для компаний/ЦК — с id и данными пользователя
+  export interface ResumeWithUser extends Resume {
+    id: string;
+    User: {
+      id: string;
+      name: string;
+      email: string;
+    };
+  }
+  
+
+  export const defaultResume: Resume = {
+    experience: [],
+    skills: [],
+    languages: [],
+    additionalInfo: "",
+};
+
+C:\Users\ARMAGEDDON\Documents\testMob\my-new-app\src\types\vacancy.ts
+export interface Vacancy {
+  id?: string;
+  title: string;
+  description: string;
+  requirements: string[]; 
+  location: string;
+  salary: string;
+  createdAt?: string;
+  userId?: string;
+}
+
+C:\Users\ARMAGEDDON\Documents\testMob\my-new-app\App.js
+import React from 'react';
+import { NavigationContainer } from '@react-navigation/native';
+import { createStackNavigator } from '@react-navigation/stack';
+import Home from './src/pages/home/home/home';
+import Login from './src/pages/auth/login/login';
+import Dashboard from './src/pages/dashboard/dashboard/dashboard';
+import ResumePage from './src/pages/resume/list/resumePage';
+import ResumeDetailsPage from './src/pages/resume/details/ResumeDetailsPage';
+import VacancyFormPage from './src/pages/vacancy/form/VacancyFormPage';
+import VacancyDetailsPage from './src/pages/vacancy/details/VacancyDetailsPage';
+import VacancyListPage from './src/pages/vacancy/list/VacancyListPage';
+import NotificationListPage from './src/pages/notification/list/NotificationListPage';
+import NotificationFormPage from './src/pages/notification/form/NotificationFormPage';
+import NotificationDetailsPage from './src/pages/notification/details/NotificationDetailsPage';
+import { useCurrentUser } from './src/hooks/useCurrentUser';
+
+const Stack = createStackNavigator();
+
+export default function App() {
+  const { user } = useCurrentUser();  // Получаем данные о текущем пользователе
+
+  return (
+    <NavigationContainer>
+      <Stack.Navigator initialRouteName="Home">
+        <Stack.Screen name="Home" component={Home} />
+        <Stack.Screen name="Login" component={Login} />
+        <Stack.Screen name="Dashboard" component={Dashboard} />
+        <Stack.Screen name="Resume" component={ResumePage} />
+        <Stack.Screen name="ResumeDetails" component={ResumeDetailsPage} />
+        <Stack.Screen name="VacancyForm" component={VacancyFormPage} />
+        <Stack.Screen name="VacancyDetails" component={VacancyDetailsPage} />
+        <Stack.Screen name="VacancyList" component={VacancyListPage} />
+        <Stack.Screen name="Notifications" component={NotificationListPage} />
+        <Stack.Screen name="NotificationForm" component={NotificationFormPage} />
+        <Stack.Screen name="NotificationDetails" component={NotificationDetailsPage} />
+      </Stack.Navigator>
+    </NavigationContainer>
+  );
+}
+
+C:\Users\ARMAGEDDON\Documents\testMob\my-new-app\app.json
+
+{
+  "expo": {
+    "name": "my-new-app",
+    "slug": "my-new-app",
+    "version": "1.0.0",
+    "orientation": "portrait",
+    "icon": "./assets/icon.png",
+    "userInterfaceStyle": "light",
+    "newArchEnabled": true,
+    "splash": {
+      "image": "./assets/splash-icon.png",
+      "resizeMode": "contain",
+      "backgroundColor": "#ffffff"
+    },
+    "ios": {
+      "supportsTablet": true
+    },
+    "android": {
+      "adaptiveIcon": {
+        "foregroundImage": "./assets/adaptive-icon.png",
+        "backgroundColor": "#ffffff"
+      },
+      "edgeToEdgeEnabled": true
+    },
+    "web": {
+      "favicon": "./assets/favicon.png"
+    }
+  }
+}
+
+C:\Users\ARMAGEDDON\Documents\testMob\my-new-app\index.js
+import { registerRootComponent } from 'expo';
+
+import App from './App';
+
+// registerRootComponent calls AppRegistry.registerComponent('main', () => App);
+// It also ensures that whether you load the app in Expo Go or in a native build,
+// the environment is set up appropriately
+registerRootComponent(App);
+
+
+C:\Users\ARMAGEDDON\Documents\testMob\my-new-app\package.json
+
+{
+  "name": "my-new-app",
+  "version": "1.0.0",
+  "main": "index.js",
+  "scripts": {
+    "start": "expo start",
+    "android": "expo start --android",
+    "ios": "expo start --ios",
+    "web": "expo start --web"
+  },
+  "dependencies": {
+    "@react-native-async-storage/async-storage": "^2.1.2",
+    "@react-native-picker/picker": "^2.11.0",
+    "@react-navigation/native": "^7.1.9",
+    "@react-navigation/stack": "^7.3.2",
+    "axios": "^1.9.0",
+    "expo": "~53.0.9",
+    "expo-status-bar": "~2.2.3",
+    "jwt-decode": "^4.0.0",
+    "react": "19.0.0",
+    "react-native": "^0.79.2",
+    "react-native-gesture-handler": "^2.25.0",
+    "react-native-reanimated": "^3.17.5",
+    "react-native-safe-area-context": "^5.4.0",
+    "react-native-screens": "^4.10.0",
+    "react-native-toast-message": "^2.3.0",
+    "toasts": "^1.0.0"
+  },
+  "devDependencies": {
+    "@babel/core": "^7.20.0",
+    "@types/react": "~19.0.10",
+    "typescript": "~5.8.3"
+  },
+  "private": true
+}
+C:\Users\ARMAGEDDON\Documents\testMob\my-new-app\tsconfig.json
+{
+  "compilerOptions": {},
+  "extends": "expo/tsconfig.base"
+}
