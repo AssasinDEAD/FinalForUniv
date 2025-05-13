@@ -1,32 +1,19 @@
-import { useEffect, useState } from "react";
-import Toast from "react-native-toast-message";
-
+import { useState, useEffect } from "react";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 
 export const useCurrentUser = () => {
-  const [user, setUser] = useState(null);
-  const [loading, setLoading] = useState(true);
+  const [user, setUser] = useState<any>(null); // Состояние для хранения данных пользователя
+
   useEffect(() => {
     const fetchUser = async () => {
-      try {
-        const token = await AsyncStorage.getItem("token");
-        if (!token) {
-          Toast.show({ type: "error", text1: "Вы не авторизованы" });
-          return;
-        }
-
-        const userFromStorage = await AsyncStorage.getItem("user");
-        if (userFromStorage) {
-          setUser(JSON.parse(userFromStorage));
-          setLoading(false);
-        }
-      } catch (error) {
-        Toast.show({ type: "error", text1: "Ошибка загрузки данных пользователя" });
+      const userData = await AsyncStorage.getItem("user"); // Получаем пользователя из AsyncStorage
+      if (userData) {
+        setUser(JSON.parse(userData)); // Если данные есть, устанавливаем их в состояние
       }
     };
 
-    fetchUser();
+    fetchUser(); // Выполняем загрузку данных пользователя при монтировании компонента
   }, []);
 
-  return { user, loading };
+  return { user }; // Возвращаем данные пользователя
 };
